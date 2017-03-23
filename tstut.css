@@ -1,0 +1,8 @@
+@font-face {
+  font-family: 'TeleType';
+  src: url('teletype.ttf');
+}
+
+textarea {
+    font-family: 'TeleType', 'Courier', serif;
+}

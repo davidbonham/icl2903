@@ -1,0 +1,12 @@
+{
+    "compilerOptions": {
+        "noFallthroughCasesInSwitch": true,
+        "noImplicitAny": true,
+        "noImplicitThis": true,
+        "alwaysStrict": true,
+        "target": "es2015",
+        "module": "commonjs",
+        "typeRoots": [ "node_modules/@types/" ],
+        "types": [ "jasmine" ]
+    }
+}
