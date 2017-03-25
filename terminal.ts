@@ -218,7 +218,7 @@ namespace Terminal
 
         private pollResolution : any;
         private keyboard   : Keyboard;
-        private printer    : Printer;
+        public  printer    : Printer;
         private lineBuffer : string;
 
         // Optional controls 
@@ -227,8 +227,19 @@ namespace Terminal
         private clearButton : HTMLButtonElement;
         private resetButton : HTMLButtonElement;
  
-        poll() : Promise<Event> {
-            return new Promise<Event>((resolve) => this.pollResolution = resolve);
+        poll(b : boolean) : Promise<Event> {
+            wto("in terminal poll")
+            this.busy = b;
+            this.updateUI()
+            return new Promise<Event>( (resolve) => {
+                if (b) {
+                    // We're executing something at the moment so resolve
+                    // quickly if no event occurs
+                    wto("poll busy")
+                    setInterval(() => resolve({kind: EventKind.None}), 1000);
+                }
+                this.pollResolution = resolve;
+            })
         }
     }
 }

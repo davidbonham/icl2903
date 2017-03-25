@@ -5,12 +5,22 @@
         <link rel="stylesheet" href="tstut.css">
       </head>
     <body>
+        <div id="ttydiv">
+        <h1>TeleType Terminal</h1>
         <textarea id="ttytext" rows="24" cols="72" spellcheck="false"></textarea>
         <br>
         <input type="radio" id="echo">echo
         <input type="radio" id="busy">busy
         <button id="clear">clear</button>
         <button id="reset">reset</button>
+        </div>
+        <div id="fsdiv">
+            <h1>Remote File Store</h1>
+            <input type="radio" id="fs_online">on line
+            <input type="radio" id="fs_busy">retrieving data
+            <br>
+            <textarea id ="fs_log" rows="10" cols="32" spellcheck="false" readonly="readonly"></textarea>
+        </div>
         <script src="filestore.js"></script>
         <script src="terminal.js"></script>
         <script src="session.js"></script>

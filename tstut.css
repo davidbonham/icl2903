@@ -5,4 +5,21 @@
 
 textarea {
     font-family: 'TeleType', 'Courier', serif;
+    background: #fffff8
+}
+
+#ttydiv {
+  margin: 20px;
+  float: left;
+}
+
+#fsdiv {
+  margin: 20px;
+  float: left;
+}
+
+h1 {
+
+  font-size: 150%;
+  font-family: "Lucida Console"
 }

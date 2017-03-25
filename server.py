@@ -3,19 +3,33 @@ import collections
 import os
 import time
 
-def login_handler(request):
-    return 'OK: user valid'
+def hello_handler(request):
+    return 'OK: server up'
+
+def load_handler(request):
+
+    name = request[1]
+
+    # We don't allow any path information in filenames
+    if os.path.pathsep in name:
+        return 'ERROR: bad file name ' + name
+    elif not os.path.isfile(name):
+        return 'ERROR: no such file as ' + name
+    else:
+        with open(name, 'r') as file:
+            return 'OK: file read\n' + file.read()
 
 def error_handler(request):
     return 'ERROR: no handler for request "' + ' '.join(request) + '"'
 
 fs_handlers = {
-    'LOGIN': login_handler,
+    'LOAD'  : load_handler,
+    'HELLO' : hello_handler,
 }
 
 served = {
     '/index.html'   : ('text/html', 'index.html'),
-    '/text.css'     : ('text/css', 'tstut.css'),
+    '/tstut.css'     : ('text/css', 'tstut.css'),
     '/tty.mp3'      : ('audio/mpeg', 'tty.mp3'),
     '/ttykey.wav'   : ('audio/x-wav', 'ttykey.wav'),
     '/space.wav'    : ('audio/x-wav', 'space.wav'),
