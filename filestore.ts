@@ -39,35 +39,35 @@ class FileStore
             this.perform("HELLO", (request: XMLHttpRequest|undefined) => {
                 this.recentlyOnline = request !== undefined && request.status == 200
                 this.updateUI();
-            })}, 10000)
+            })}, 1000000)
 
         // Get user accounting info and update the object we created above
         this.perform("LOAD _ACCOUNTS", (request: XMLHttpRequest|undefined) => {
             if (request != undefined && request.status == 200) {
-                // We expect a sequence of lines of the form USERID password
-                // and we want to place this in the session storage.
-                const lines: string[] = request.responseText.split("\n")
-                if (!lines[0].startsWith("ERROR")) {
-                            
-                    let accounts : { [name: string] : string} = {}
-                    for (const line of lines.slice(1)) {
-                        let [name, pass] = line.split(" ", 2)
-                        accounts[name] = pass
-                    }    
-                    sessionStorage.accounts = accounts
-                }
+                sessionStorage["accounts"] = request.responseText
             }
         }) 
     }
 
-    public fetchCatalog(username: string) {
+    public loadCatalog(username: string) {
         // Retrieve the contents of the entire catalog for a particular user.
         // The result is 
     }
 
-    public validUser(username: string, password: string) : boolean {
-        if (username in sessionStorage.accounts) {
-            if (sessionStorage.accounts[username] == password) {
+    public saveFile(username: string, filename: string) {
+        // Locate the file in our session storage and save it back to the 
+        // server
+    }
+
+    public loginUser(username: string, password: string) : boolean {
+        for (const line of sessionStorage.accounts.split("\n")) {
+            wto("line='" + line + "'")
+            const [u, p] = line.split(" ")
+            wto("u='" + u + "' p='" + p + "'")
+            if (username === u && password == p) {
+                this.username = username
+                this.password = password
+                this.log("LOGIN " + username)
                 return true
             }
         }

@@ -27,7 +27,7 @@ namespace Terminal
             // events identify a character or interrupt, they will pass it to the
             // terminal
             this.tty.onkeypress = (event : KeyboardEvent) => {
-                console.log('onkeypress ' + event);
+                if (terminal.debug) console.log('onkeypress ' + event);
                 if (!event.ctrlKey) {
                     this.processKeyEvent(event, false, String.fromCharCode(event.which));      // All others
                 }
@@ -38,7 +38,7 @@ namespace Terminal
             }
 
             this.tty.onkeydown = (event : KeyboardEvent) => {
-                console.log('onkeydown ' + event);
+                if (terminal.debug) console.log('onkeydown ' + event);
 
                 let block = false;
 
@@ -50,11 +50,12 @@ namespace Terminal
                         block = true;
                     }
                 }
-                else if (event.which == 13) {
-                    // Return key
-                    this.processKeyEvent(event, false, String.fromCharCode(event.which));
-                    block = true;
-                }
+                // return is seen in the onkeypress handler
+                //else if (event.which == 13) {
+                //    // Return key
+                //    this.processKeyEvent(event, false, String.fromCharCode(event.which));
+                //    block = true;
+                //}
                 else if (event.which == 8) {
                     // Backspace key
                     this.processKeyEvent(event, false, String.fromCharCode(event.which));
@@ -141,6 +142,7 @@ namespace Terminal
                 this.keyboard = new Keyboard(this, tty);
 
                 // Look for the optional UI elements
+                this.debugToggle = <HTMLInputElement>document.getElementById("debug");
                 this.busyRadio = <HTMLInputElement>document.getElementById("busy");
                 this.echoRadio = <HTMLInputElement>document.getElementById("echo");
                 this.clearButton = <HTMLButtonElement>document.getElementById("clear");
@@ -163,6 +165,7 @@ namespace Terminal
         private updateUI() : void {
             this.busyRadio.checked = this.busy;
             this.echoRadio.checked = this.printer.echo;
+            this.debug = this.debugToggle.checked
         }
 
         private reset() : void {
@@ -171,12 +174,36 @@ namespace Terminal
             this.printer.echo = true;
             this.printer.clear();
             this.updateUI();
+            this.debug = false;
         }
 
+        public echo(b : boolean) : void {
+            this.printer.echo = b;
+            this.updateUI();
+        }
+        private generateEvent(event: Event) : void {
+            if (this.currentHandler !== undefined) {
+                wto("Terminal.generateEvent calls next with " + event.kind)
+                const result = this.currentHandler.next(event)
+                wto("Terminal.generateEvent received result done=" + result.done + " value=" + result.value)
+                if (result.done) {
+                    const next = this.pendingHandler
+                    this.pendingHandler = undefined
+                    if (next != undefined) {
+                        wto("Terminal.generateEvent set handler to next")
+                        this.setHandler(next)
+                    }
+                }
+                else {
+                    this.busy = result.value
+                    this.updateUI()
+                }
+            }
+        }
 
-        addCharacter(character: string, isInterrupt: boolean = false) {
+        public addCharacter(character: string, isInterrupt: boolean = false) {
 
-            console.log("addCharacter '" + character + "' isInterrupt=" + isInterrupt);
+            console.log("addCharacter '" + character + "' code=" + character.charCodeAt(0) + " isInterrupt=" + isInterrupt);
             if (isInterrupt) {
                 // If there is pending input, we discard it and indicate this to
                 // the user by displaying ' /x/' on the current line where x is 
@@ -186,7 +213,7 @@ namespace Terminal
                     this.printer.println(" /" + character + "/");
                     this.lineBuffer = "";
                 }
-                this.pollResolution({kind: EventKind.Interrupt, interrupt: character})
+                this.generateEvent({kind: EventKind.Interrupt, interrupt: character})
             }
             else if (!this.busy) {
             
@@ -196,17 +223,19 @@ namespace Terminal
                     if (this.lineBuffer != "") {
                         this.lineBuffer = this.lineBuffer.slice(0, -1);
                         character = '_'
+                        this.printer.print(character)
                     }
                 }
                 else if (character == "\r") {
-                    this.pollResolution({kind: EventKind.Line, text: this.lineBuffer})
+                    this.printer.print(character)
+                    this.generateEvent({kind: EventKind.Line, text: this.lineBuffer})
                     this.lineBuffer = "";
                 }
                 else {
                     this.lineBuffer += character;
-                }
-                this.printer.print(character)
-            }
+                    this.printer.print(character)
+                 }
+           }
             else {
                 // We are busy so we discard any non-interrupt keys
             }
@@ -215,31 +244,33 @@ namespace Terminal
         // Is the session busy? If so, keyboard input is not being accepted 
         // unless it is an interrupt.
         private busy : boolean;
+        public debug : boolean;
 
-        private pollResolution : any;
         private keyboard   : Keyboard;
         public  printer    : Printer;
         private lineBuffer : string;
 
         // Optional controls 
         private busyRadio : HTMLInputElement;
+        private debugToggle : HTMLInputElement;
         private echoRadio : HTMLInputElement;
         private clearButton : HTMLButtonElement;
         private resetButton : HTMLButtonElement;
  
-        poll(b : boolean) : Promise<Event> {
-            wto("in terminal poll")
-            this.busy = b;
+        private currentHandler: IterableIterator<boolean>
+        private pendingHandler: IterableIterator<boolean>
+
+        public setHandler(handler: IterableIterator<boolean>) {
+            this.currentHandler = handler;
+            wto("Terminal.setHandler priming handler")
+            this.busy = this.currentHandler.next({kind: EventKind.None}).value;
+            wto("Terminal.setHandler received busy=" + this.busy)
             this.updateUI()
-            return new Promise<Event>( (resolve) => {
-                if (b) {
-                    // We're executing something at the moment so resolve
-                    // quickly if no event occurs
-                    wto("poll busy")
-                    setInterval(() => resolve({kind: EventKind.None}), 1000);
-                }
-                this.pollResolution = resolve;
-            })
-        }
+        } 
+
+        public setPendingHandler(handler: IterableIterator<boolean>) {
+            this.pendingHandler = handler;
+        }       
     }
 }
+

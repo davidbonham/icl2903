@@ -38,7 +38,8 @@ served = {
     '/terminal.js'  : ('application/javascript', 'terminal.js'), 
     '/filestore.js' : ('application/javascript', 'filestore.js'), 
     '/session.js'   : ('application/javascript', 'session.js'), 
-    '/tstut.js'     : ('application/javascript', 'tstut.js'), 
+    '/utility.js'   : ('application/javascript', 'utility.js'), 
+    '/main.js'     : ('application/javascript', 'main.js'), 
 
     '/unittest.html' : ('text/html', 'test/unittest.html'),
     '/filestore.spec.js' : ('application/javascript', 'test/filestore.spec.js'), 

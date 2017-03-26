@@ -1,56 +1,123 @@
 /// <reference path="terminal.ts" />
+/// <reference path="filestore.ts" />
+/// <reference path="utility.ts" />
 
 namespace Session {
-    export class Session {
 
-        constructor(private terminal : Terminal.Terminal) {};
-
-        private async triple(count: number)
+    function* asleepGenerator (session: Session, tty: Terminal.Terminal) : IterableIterator<boolean> {
+        wto("enter asleepGenerator - set echo false")
+        tty.echo(false);
+        for (;;)
         {
-            for (let x = 1;; x++) {
-                for (let y = 1; y < x; y++) {
-                    for (let z = 1; z <= y; z++) {
-                        if (x*x === y*y + z*z) {
-                            count--
-                            if (count == 0) {
-                                wto("*******")
-                                this.terminal.printer.print("READY? ")
-                                const reply = await this.terminal.poll(false)
-                                this.terminal.printer.println("GOT " + reply)
-                                return [x, y, z]
+            wto("asleepGenerator yielding to receive ctrl-a as busy")
+            const ctrla : Terminal.Event = yield (true)
+            wto("asleepGenerator received event " + ctrla.kind)
+            if (ctrla.kind == Terminal.EventKind.Interrupt && ctrla.interrupt == 'A')
+            {
+                wto("asleepGenerate to loginGenerator")
+                tty.setPendingHandler(loginGenerator (session, tty))
+                return false;
+            }
+        }
+    }
+
+    function* loginGenerator (session: Session, tty: Terminal.Terminal) : IterableIterator<boolean> {
+
+        // The user had attracted our attention. Enable the keyboard to allow
+        // them to type the login command. We no longer appear busy.
+        tty.echo(true)
+        for (;;)
+        {
+            wto("loginGenerator yielding idle for command line")
+            const event = yield(false)
+            if (event.kind == Terminal.EventKind.Line) {
+                wto("loginGenerator received event '" + event.text + "'")
+
+                // HELP                                    help not yet available
+                // LOGIN user(.subid)?,password            validate login
+                // LOGIN user(.subid)?                     prompt for password
+                //
+                // The user name can be up to six characters.
+                if (event.text.startsWith("HELP")) {
+                    tty.printer.println("HELP NOT YET AVAILABLE")
+                }
+                else {
+                    // Parse the command with a regex
+                    const re = new RegExp(/(HELLO|LOGIN|HEL)\s+([A-Z0-9]+)?(\.([A-Z0-9]+))?\s*(,\s*(\w+))?/)
+                    const match = re.exec(event.text)
+                    if (match === null) {
+                            tty.printer.println("PLEASE LOG IN")
+                    }
+                    else {
+                        let [whole, command, user, group_subid, subid, group_password, password] = re.exec(event.text)
+                        if (user === undefined) {
+                            tty.printer.println("USER NAME MISSING")
+                        }
+                        else if (user.length > 6) {
+                            tty.printer.println("USER NAME TOO LONG")
+                        }
+                        else {
+                            while (password === undefined) {
+                                // On a real tty, we would do a cr to move to
+                                // the @s at the start of the line but we turn
+                                // off echoing instead
+                                tty.printer.print("@@@@ PASSWORD?")
+                                tty.echo(false)
+                                const passwordLine = yield(false) 
+                                tty.echo(true)
+                                if (passwordLine.kind === Terminal.EventKind.Line) {
+                                    password = passwordLine.text
+                                    wto("password='" + password + "'" )
+                                }
+                            }
+                            if (!session.login(user, password)){
+                                tty.printer.println("ILLEGAL ACCESS")
+                            }
+                            else {
+                                tty.setPendingHandler(sessionGenerator(session, tty))
+                                return false
                             }
                         }
-                        const event = await this.terminal.poll(true)
                     }
                 }
             }
         }
+    }
 
-        async perform() {
+    function* sessionGenerator (session: Session, tty: Terminal.Terminal) : IterableIterator<boolean> {
 
-            // This is a stub session so all we do is repeatedly poll the 
-            // terminal and display the response we receive until we are
-            // asked to stop
-            let count = 0
+        // The user is logged so display the banner and note the starting
+        // time for later use
+        session.start();
 
-            for (;;) {
-                // Wait for a line which will be 'triple' to generate the
-                // next triple or 'hello' to ping the server
-                const result = await this.terminal.poll(false);
-                if (result.kind === Terminal.EventKind.Line) {
-                    wto("perform received line " + result.text)
-                    if (result.text === "TRIPLE") {
-                        wto("session perform calling triple");
-                        count += 1
-                        const [x, y, z] = await this.triple(count)
-                        this.terminal.printer.println("TRIPLE " + x + " " + y + " " + z)
-                    }
-                    else {
-                        this.terminal.printer.println("IGNORED")
-                      }
-                }
-                wto(result.toString());
-            }
+        wto("sessionGenerator")
+    }
+
+    export class Session {
+
+        constructor(private terminal : Terminal.Terminal, private fileStore: FileStore) {};
+
+        private startTime : Date
+        public handleAsleep() {
+
+            // Establish our event handler
+            wto("handleAsleep establishing asleepGenerator")
+            this.terminal.setHandler(asleepGenerator(this, this.terminal))
+        }
+
+        public login(username: string, password: string) : boolean {
+            return this.fileStore.loginUser(username, password)
+        }
+
+        public start() : void {
+            this.startTime = new Date()
+            const date = Utility.basicDate(this.startTime)
+            const time = Utility.basicTime(this.startTime)
+            
+            this.terminal.printer.println("NSP 2903 BASIC SYSTEM")
+            this.terminal.printer.println(date + " TIME " + time)
+            this.terminal.printer.println("READY")
+            this.terminal.printer.println("")
         }
     }
 }
