@@ -1,6 +1,14 @@
 
 namespace Terminal
 {
+    // The result expected to be yielded by a session handler. Are we to
+    // appear busy to the user and a sequence of printable elements that 
+    // are to be printed but can be discarded if interrupted. The handler
+    // is not to be invoked again until output is complete. 
+    export enum OutputType {Echo, NoEcho, Print, PrintLn}
+    export type Output = {kind : OutputType; text?: string}
+    export type HandlerResult = {busy: boolean; output?: Output[]}
+
     class Keyboard {
 
         private processKeyEvent(key_event : KeyboardEvent, is_ctrl : boolean, ch : string) : boolean {
@@ -95,11 +103,13 @@ namespace Terminal
 
             // This is a stub implementation which ignores the timing and 
             // displays the text immediately
-            for (let ch of text) {
-                // Convert dollars to pounds in a UK teletype font
-                if (ch === '$') ch = 'l';
-                this.tty.value += ch;
-                this.tty.scrollTop = this.tty.scrollHeight;
+            if (this.doEcho) {
+                for (let ch of text) {
+                    // Convert dollars to pounds in a UK teletype font
+                    if (ch === '$') ch = 'l';
+                    this.tty.value += ch;
+                    this.tty.scrollTop = this.tty.scrollHeight;
+                }
             }
         }
 
@@ -181,22 +191,45 @@ namespace Terminal
             this.printer.echo = b;
             this.updateUI();
         }
+
+        private processHandlerResult(result : HandlerResult) : void {
+            this.busy = result.busy
+            wto("result.output=" + result.output)
+            if (result.output !== undefined) {
+                for (const op of result.output) {
+                    switch (op.kind) {
+                        case OutputType.Echo:
+                            this.echo(true)
+                            break;
+                        case OutputType.NoEcho:
+                            this.echo(false)
+                            break;
+                        case OutputType.Print:
+                            this.printer.print(op.text)
+                            break;
+                        case OutputType.PrintLn:
+                            this.printer.println(op.text)
+                            break;
+                    }
+                }
+            }
+            this.updateUI()
+        }
+
         private generateEvent(event: Event) : void {
             if (this.currentHandler !== undefined) {
                 wto("Terminal.generateEvent calls next with " + event.kind)
                 const result = this.currentHandler.next(event)
                 wto("Terminal.generateEvent received result done=" + result.done + " value=" + result.value)
+                this.processHandlerResult(result.value)
+
                 if (result.done) {
-                    const next = this.pendingHandler
+                    const nextHandler = this.pendingHandler
                     this.pendingHandler = undefined
-                    if (next != undefined) {
+                    if (nextHandler != undefined) {
                         wto("Terminal.generateEvent set handler to next")
-                        this.setHandler(next)
+                        this.setHandler(nextHandler)
                     }
-                }
-                else {
-                    this.busy = result.value
-                    this.updateUI()
                 }
             }
         }
@@ -257,18 +290,18 @@ namespace Terminal
         private clearButton : HTMLButtonElement;
         private resetButton : HTMLButtonElement;
  
-        private currentHandler: IterableIterator<boolean>
-        private pendingHandler: IterableIterator<boolean>
+        private currentHandler: IterableIterator<HandlerResult>
+        private pendingHandler: IterableIterator<HandlerResult>
 
-        public setHandler(handler: IterableIterator<boolean>) {
+        public setHandler(handler: IterableIterator<HandlerResult>) {
             this.currentHandler = handler;
             wto("Terminal.setHandler priming handler")
-            this.busy = this.currentHandler.next({kind: EventKind.None}).value;
+            const result = this.currentHandler.next({kind: EventKind.None})
+            this.processHandlerResult(result.value)
             wto("Terminal.setHandler received busy=" + this.busy)
-            this.updateUI()
         } 
 
-        public setPendingHandler(handler: IterableIterator<boolean>) {
+        public setPendingHandler(handler: IterableIterator<HandlerResult>) {
             this.pendingHandler = handler;
         }       
     }

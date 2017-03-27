@@ -4,32 +4,36 @@
 
 namespace Session {
 
-    function* asleepGenerator (session: Session, tty: Terminal.Terminal) : IterableIterator<boolean> {
+    function* asleepGenerator (session: Session, tty: Terminal.Terminal) : IterableIterator<Terminal.HandlerResult> {
         wto("enter asleepGenerator - set echo false")
-        tty.echo(false);
+        let op = new OutputAccumulator;
+        op.noecho();
         for (;;)
         {
             wto("asleepGenerator yielding to receive ctrl-a as busy")
-            const ctrla : Terminal.Event = yield (true)
+            const ctrla : Terminal.Event = yield ({busy: true, output: op.finish()})
             wto("asleepGenerator received event " + ctrla.kind)
             if (ctrla.kind == Terminal.EventKind.Interrupt && ctrla.interrupt == 'A')
             {
                 wto("asleepGenerate to loginGenerator")
                 tty.setPendingHandler(loginGenerator (session, tty))
-                return false;
+                return {busy: false};
             }
         }
     }
 
-    function* loginGenerator (session: Session, tty: Terminal.Terminal) : IterableIterator<boolean> {
+    function* loginGenerator (session: Session, tty: Terminal.Terminal) : IterableIterator<Terminal.HandlerResult> {
+
+        let op = new OutputAccumulator;
 
         // The user had attracted our attention. Enable the keyboard to allow
         // them to type the login command. We no longer appear busy.
-        tty.echo(true)
+        op.echo()
         for (;;)
         {
             wto("loginGenerator yielding idle for command line")
-            const event = yield(false)
+            const event = yield({busy: false, output:op.finish()})
+
             if (event.kind == Terminal.EventKind.Line) {
                 wto("loginGenerator received event '" + event.text + "'")
 
@@ -39,43 +43,49 @@ namespace Session {
                 //
                 // The user name can be up to six characters.
                 if (event.text.startsWith("HELP")) {
-                    tty.printer.println("HELP NOT YET AVAILABLE")
+                    op.println("HELP NOT YET AVAILABLE")
                 }
                 else {
                     // Parse the command with a regex
                     const re = new RegExp(/(HELLO|LOGIN|HEL)\s+([A-Z0-9]+)?(\.([A-Z0-9]+))?\s*(,\s*(\w+))?/)
                     const match = re.exec(event.text)
                     if (match === null) {
-                            tty.printer.println("PLEASE LOG IN")
+                        op.println("PLEASE LOG IN")
                     }
                     else {
                         let [whole, command, user, group_subid, subid, group_password, password] = re.exec(event.text)
                         if (user === undefined) {
-                            tty.printer.println("USER NAME MISSING")
+                            op.println("USER NAME MISSING")
                         }
                         else if (user.length > 6) {
-                            tty.printer.println("USER NAME TOO LONG")
+                            op.println("USER NAME TOO LONG")
                         }
                         else {
                             while (password === undefined) {
                                 // On a real tty, we would do a cr to move to
                                 // the @s at the start of the line but we turn
                                 // off echoing instead
-                                tty.printer.print("@@@@ PASSWORD?")
-                                tty.echo(false)
-                                const passwordLine = yield(false) 
-                                tty.echo(true)
+                                op.print("@@@@ PASSWORD?")
+                                op.noecho()
+                                const passwordLine = yield({busy: false, output: op.finish()})
+                                op.echo()
                                 if (passwordLine.kind === Terminal.EventKind.Line) {
                                     password = passwordLine.text
                                     wto("password='" + password + "'" )
+
+                                    // Because we disabled echo instead of 
+                                    // letting the user type over the @s, 
+                                    // we stopped the effect of their crlf
+                                    // so imitate that now
+                                    op.println("")
                                 }
                             }
                             if (!session.login(user, password)){
-                                tty.printer.println("ILLEGAL ACCESS")
+                                op.println("ILLEGAL ACCESS")
                             }
                             else {
                                 tty.setPendingHandler(sessionGenerator(session, tty))
-                                return false
+                                return {busy: false, output: op.finish()}
                             }
                         }
                     }
@@ -84,13 +94,44 @@ namespace Session {
         }
     }
 
-    function* sessionGenerator (session: Session, tty: Terminal.Terminal) : IterableIterator<boolean> {
-
-        // The user is logged so display the banner and note the starting
-        // time for later use
-        session.start();
+    function* sessionGenerator (session: Session, tty: Terminal.Terminal) : IterableIterator<Terminal.HandlerResult> {
 
         wto("sessionGenerator")
+
+        let op = new OutputAccumulator
+        // The user is logged so display the banner and note the starting
+        // time for later use
+        session.start(op);
+        return {busy: false, output: op.finish()}
+    }
+
+    class OutputAccumulator {
+
+        constructor(private pendingOutput: Terminal.Output[] = []) {}
+
+        echo(): void { 
+            this.pendingOutput.push({kind: Terminal.OutputType.Echo})
+        }
+
+        noecho(): void { 
+            this.pendingOutput.push({kind: Terminal.OutputType.NoEcho})
+        }
+
+        println(text: string)
+        {
+            this.pendingOutput.push({kind: Terminal.OutputType.PrintLn, text: text})
+        }
+
+        print(text: string)
+        {
+            this.pendingOutput.push({kind: Terminal.OutputType.Print, text: text})
+        }
+
+        finish () : Terminal.Output[] {
+            const current = this.pendingOutput
+            this.pendingOutput = []
+            return current
+        }
     }
 
     export class Session {
@@ -109,15 +150,15 @@ namespace Session {
             return this.fileStore.loginUser(username, password)
         }
 
-        public start() : void {
+        public start(op: OutputAccumulator) : void {
             this.startTime = new Date()
             const date = Utility.basicDate(this.startTime)
             const time = Utility.basicTime(this.startTime)
             
-            this.terminal.printer.println("NSP 2903 BASIC SYSTEM")
-            this.terminal.printer.println(date + " TIME " + time)
-            this.terminal.printer.println("READY")
-            this.terminal.printer.println("")
+            op.println("NSP 2903 BASIC SYSTEM")
+            op.println(date + " TIME " + time)
+            op.println("READY")
+            op.println("")
         }
     }
 }
