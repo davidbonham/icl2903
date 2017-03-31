@@ -1,7 +1,12 @@
 import BaseHTTPServer
 import collections
+import datetime
 import os
+import sys
 import time
+
+global filesystem_root
+filesystem_root = None
 
 def hello_handler(request):
     return 'OK: server up'
@@ -9,22 +14,64 @@ def hello_handler(request):
 def load_handler(request):
 
     name = request[1]
-
+    path = os.path.join(filesystem_root, name)
+    print path
     # We don't allow any path information in filenames
     if os.path.pathsep in name:
         return 'ERROR: bad file name ' + name
-    elif not os.path.isfile(name):
+    elif not os.path.isfile(path):
         return 'ERROR: no such file as ' + name
     else:
-        with open(name, 'r') as file:
+        with open(path, 'r') as file:
             return 'OK: file read\n' + file.read()
+
+
+def loadall_handler(request):
+    # Given a username, contcatenate the files in that users catalogue into
+    # a single response. The grammar for the result is:
+    #
+    # response = [file]* 'E' 'O' 'D'
+    # file     = 'S' 'O' 'F' name(6A) timestamp(2d2d4d2d2d2d) length(8d) content 'E' 'O' 'F'
+    # content  = length bytes each as a character. We will store binary 
+    #            date encoded as ascii hex, one line per record
+
+    user = request[1]
+    userpath = os.path.join(filesystem_root, user)
+    if not os.path.isdir(userpath): return 'ERROR: no catalogue for user "' + user + '"'
+
+    # No need to tree walk as catalogues are flat
+    catalog = ''
+    for filename in os.listdir(userpath):
+
+        path = os.path.join(userpath, filename)
+        if os.path.isdir(path): continue
+
+        # Calculate the fields we need for the header. Some are held in 
+        # the first line of the file
+
+        # Name padded with trailing spaces to six characters
+        name = (filename + '     ')[:6]
+        
+        # Time stamp day(01-31), month(01-12), year(xxxx), hours(00-23), minutes(00-59), seconds(00-59) 
+        timestamp = datetime.datetime.fromtimestamp(os.path.getmtime(path)).strftime('%d%m%Y%H%M%S')
+
+        with open(path, 'r') as file:
+            content = file.read()
+        length = '%8d' % len(content)
+
+        entry = 'SOF' + name + timestamp + length + content + 'EOF'
+        catalog += entry
+    
+    catalog += 'EOD'
+    return catalog
 
 def error_handler(request):
     return 'ERROR: no handler for request "' + ' '.join(request) + '"'
 
 fs_handlers = {
-    'LOAD'  : load_handler,
-    'HELLO' : hello_handler,
+    'LOAD'     : load_handler,
+    'HELLO'    : hello_handler,
+    'LOADALL' : loadall_handler,
 }
 
 served = {
@@ -37,9 +84,10 @@ served = {
 
     '/terminal.js'  : ('application/javascript', 'terminal.js'), 
     '/filestore.js' : ('application/javascript', 'filestore.js'), 
+    '/program.js'   : ('application/javascript', 'program.js'), 
     '/session.js'   : ('application/javascript', 'session.js'), 
     '/utility.js'   : ('application/javascript', 'utility.js'), 
-    '/main.js'     : ('application/javascript', 'main.js'), 
+    '/main.js'      : ('application/javascript', 'main.js'), 
 
     '/unittest.html' : ('text/html', 'test/unittest.html'),
     '/filestore.spec.js' : ('application/javascript', 'test/filestore.spec.js'), 
@@ -87,9 +135,14 @@ class MyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
 def run():
 
+    print 'serving...'
     server_class = BaseHTTPServer.HTTPServer
     httpd = server_class(('', 8000), MyHandler)
     httpd.serve_forever()
 
+if __name__ == '__main__':
 
-run()
+    filesystem_root = sys.argv[1]
+    if not os.path.isdir(filesystem_root):
+        print >>stderr, filesystem_root, 'is not a directory'
+    run()

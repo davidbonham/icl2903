@@ -44,14 +44,65 @@ class FileStore
         // Get user accounting info and update the object we created above
         this.perform("LOAD _ACCOUNTS", (request: XMLHttpRequest|undefined) => {
             if (request != undefined && request.status == 200) {
-                sessionStorage["accounts"] = request.responseText
+                this.storeAccounts(request.responseText);
             }
         }) 
+    }
+
+    private storeAccounts(text: string) {
+        sessionStorage["accounts"] = text
+    }
+
+    private storeFiles(user: string, archive: string) : void {
+
+        // Process each file in the archive and store it under the key
+        // FILE_DATA_user_filename and FILE_INFO_user_filename. Store the 
+        // user's account data under the key ACCOUNT_user.
+        while (archive.startsWith('SOF')) {
+
+            // Split off the header from the content
+            const header = archive.substring(0,31)
+            archive = archive.substring(31)
+
+            const filename = header.slice(3, 3 + 6).trim()
+            const timestamp = header.slice(9, 9+14)
+            const length = +header.slice(23, 23+8).trim()
+
+            // Now split the content of this file off the archive
+            const content = archive.substring(0, length)
+            archive = archive.substring(length)
+
+            // Check we are at the end of the file 
+            if (!archive.startsWith("EOF"))  break 
+            
+            archive = archive.substring(3)
+
+            // This file looks valid. Is it an account or a user file?
+            if (filename == "_accou") {
+                sessionStorage["ACCOUNT_" + user] = content
+                this.log("   ACCOUNT " + user)
+            }
+            else
+            {
+                sessionStorage["FILE_INFO_" + user + "_" + filename] = timestamp
+                sessionStorage["FILE_DATA_" + user + "_" + filename] = content
+                this.log("   FILE " + user + " " + filename)
+            }
+        }
+
+        // Check we are at the end of the archive
+        if (archive != "EOD")  {
+            this.log("CORRUPT FILESPACE")
+        }
+
     }
 
     public loadCatalog(username: string) {
         // Retrieve the contents of the entire catalog for a particular user.
         // The result is 
+        this.perform("LOADALL " + username, (request: XMLHttpRequest|undefined) => {
+                    this.storeFiles(username, request.responseText)
+                })
     }
 
     public saveFile(username: string, filename: string) {
@@ -68,6 +119,9 @@ class FileStore
                 this.username = username
                 this.password = password
                 this.log("LOGIN " + username)
+
+                this.loadCatalog(this.username)
+                this.loadCatalog('LIBRY')
                 return true
             }
         }
