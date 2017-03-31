@@ -150,6 +150,7 @@ namespace Terminal
                 // Wire up the terminal components
                 this.printer = new Printer(tty);
                 this.keyboard = new Keyboard(this, tty);
+                this.output = new OutputAccumulator
 
                 // Look for the optional UI elements
                 this.debugToggle = <HTMLInputElement>document.getElementById("debug");
@@ -187,32 +188,26 @@ namespace Terminal
             this.debug = false;
         }
 
-        public echo(b : boolean) : void {
-            this.printer.echo = b;
-            this.updateUI();
-        }
-
         private processHandlerResult(result : HandlerResult) : void {
+
             this.busy = result.busy
-            wto("result.output=" + result.output)
-            if (result.output !== undefined) {
-                for (const op of result.output) {
-                    switch (op.kind) {
-                        case OutputType.Echo:
-                            this.echo(true)
-                            break;
-                        case OutputType.NoEcho:
-                            this.echo(false)
-                            break;
-                        case OutputType.Print:
-                            this.printer.print(op.text)
-                            break;
-                        case OutputType.PrintLn:
-                            this.printer.println(op.text)
-                            break;
-                    }
+            for (const op of this.output.finish()) {
+                switch (op.kind) {
+                    case OutputType.Echo:
+                        this.printer.echo = true
+                        break;
+                    case OutputType.NoEcho:
+                        this.printer.echo = false
+                        break;
+                    case OutputType.Print:
+                        this.printer.print(op.text)
+                        break;
+                    case OutputType.PrintLn:
+                        this.printer.println(op.text)
+                        break;
                 }
             }
+            this.output = new OutputAccumulator            
             this.updateUI()
         }
 
@@ -290,6 +285,25 @@ namespace Terminal
         private clearButton : HTMLButtonElement;
         private resetButton : HTMLButtonElement;
  
+        private output : OutputAccumulator
+
+        public print(text: string) {
+            this.output.print(text)
+        }
+
+        public println(text: string) {
+            this.output.println(text)
+        }
+
+        public echo() {
+            this.output.echo()
+        }
+
+        public noecho() {
+            this.output.noecho()
+        }
+        
+        
         private currentHandler: IterableIterator<HandlerResult>
         private pendingHandler: IterableIterator<HandlerResult>
 
@@ -305,5 +319,36 @@ namespace Terminal
             this.pendingHandler = handler;
         }       
     }
+
+    class OutputAccumulator {
+
+        constructor(private pendingOutput: Output[] = []) {}
+
+        echo(): void { 
+            this.pendingOutput.push({kind: OutputType.Echo})
+        }
+
+        noecho(): void { 
+            this.pendingOutput.push({kind: OutputType.NoEcho})
+        }
+
+        println(text: string)
+        {
+            this.pendingOutput.push({kind: OutputType.PrintLn, text: text})
+        }
+
+        print(text: string)
+        {
+            this.pendingOutput.push({kind: OutputType.Print, text: text})
+        }
+
+        finish () : Output[] {
+            const current = this.pendingOutput
+            this.pendingOutput = []
+            return current
+        }
+    }
+
+
 }
 
