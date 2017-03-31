@@ -7,17 +7,17 @@ namespace Session {
 
     /**
      * Handle the system's "asleep" state
-     * 
-     * Initially, and after a user logs out of their session, the system 
-     * is asleep. The ICL7502 modular terminal processor waits for the 
+     *
+     * Initially, and after a user logs out of their session, the system
+     * is asleep. The ICL7502 modular terminal processor waits for the
      * next user to request attention by typeing ctrl-A. Keyboard input
-     * is not reflected and is ignored until that happens. 
-     * 
+     * is not reflected and is ignored until that happens.
+     *
      * Whatever event is passed to us via yield, ignore it and yield once
      * more looking busy until the event is the 'A' interrupt. At that
      * point, switch to the login state and yield indicating we are ready
      * to handle keyboard input.
-     * 
+     *
      * @param session   the session for this browser session
      * @param tty       the terminal device attached to this session
      */
@@ -40,28 +40,28 @@ namespace Session {
 
     /**
      * Handle the login state
-     * 
+     *
      * The user has attracted our attention. Read lines of input from the
      * terminal until the user has specified a login or hello command with
      * the correct syntax and a username and password that exist. It appears
-     * that there was an intention to provide help for the login process 
+     * that there was an intention to provide help for the login process
      * but there is no documentation to suggest what it might have looked
      * like. The real system simply announces it wasn't available yet.
-     * 
+     *
      * There is no intention to provide secure access - all communication
      * is performed over a clear HTTP connection in any case. All we want
      * to do is present to the user how a real system would have behaved.
-     * 
+     *
      * The username and password information is held in the session storage
-     * managed by the file store. We would have started loading it when 
+     * managed by the file store. We would have started loading it when
      * the file store was created and expect that it will have been created
      * by now. If not, the user will be unlucky and unable to log in.
-     * 
+     *
      * Once the user has logged in correctly we switch to the session
      * state ready to handle the user until they log out.
-     * 
+     *
      * TODO: Handle subids for users
-     * 
+     *
      * @param session   the session for this browser session
      * @param tty       the terminal device attached to this session
      */
@@ -114,8 +114,8 @@ namespace Session {
                                     password = passwordLine.text
                                     wto("password='" + password + "'" )
 
-                                    // Because we disabled echo instead of 
-                                    // letting the user type over the @s, 
+                                    // Because we disabled echo instead of
+                                    // letting the user type over the @s,
                                     // we stopped the effect of their crlf
                                     // so imitate that now
                                     tty.println("")
@@ -174,7 +174,7 @@ namespace Session {
                     const event : Terminal.Event = yield({busy:false})
                     switch (event.kind) {
 
-                        case Terminal.EventKind.Interrupt: 
+                        case Terminal.EventKind.Interrupt:
                             session.program.breakIn()
                             break
                         case Terminal.EventKind.Line:
@@ -185,7 +185,7 @@ namespace Session {
                     }
                 }
                 break
-            
+
                 default: {
 
                     // If the program is stopped or interrupted, the user can
@@ -237,7 +237,7 @@ namespace Session {
             this.startTime = new Date()
             const date = Utility.basicDate(this.startTime)
             const time = Utility.basicTime(this.startTime)
-            
+
             tty.println("NSP 2903 BASIC SYSTEM")
             tty.println(date + " TIME " + time)
             tty.println("READY")
@@ -247,7 +247,7 @@ namespace Session {
         public perform(command: string) : boolean {
 
             // There is no program running or waiting for input (but one
-            // may be interrupted). Process this command. 
+            // may be interrupted). Process this command.
 
             // Ignore blank lines:
             if (command === "") return true
