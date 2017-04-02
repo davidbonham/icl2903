@@ -32,7 +32,7 @@ def loadall_handler(request):
     #
     # response = [file]* 'E' 'O' 'D'
     # file     = 'S' 'O' 'F' name(6A) timestamp(2d2d4d2d2d2d) length(8d) content 'E' 'O' 'F'
-    # content  = length bytes each as a character. We will store binary 
+    # content  = length bytes each as a character. We will store binary
     #            date encoded as ascii hex, one line per record
 
     user = request[1]
@@ -46,13 +46,13 @@ def loadall_handler(request):
         path = os.path.join(userpath, filename)
         if os.path.isdir(path): continue
 
-        # Calculate the fields we need for the header. Some are held in 
+        # Calculate the fields we need for the header. Some are held in
         # the first line of the file
 
         # Name padded with trailing spaces to six characters
         name = (filename + '     ')[:6]
-        
-        # Time stamp day(01-31), month(01-12), year(xxxx), hours(00-23), minutes(00-59), seconds(00-59) 
+
+        # Time stamp day(01-31), month(01-12), year(xxxx), hours(00-23), minutes(00-59), seconds(00-59)
         timestamp = datetime.datetime.fromtimestamp(os.path.getmtime(path)).strftime('%d%m%Y%H%M%S')
 
         with open(path, 'r') as file:
@@ -61,7 +61,7 @@ def loadall_handler(request):
 
         entry = 'SOF' + name + timestamp + length + content + 'EOF'
         catalog += entry
-    
+
     catalog += 'EOD'
     return catalog
 
@@ -82,15 +82,18 @@ served = {
     '/space.wav'    : ('audio/x-wav', 'space.wav'),
     '/teletype.ttf' : ('application/x-font-truetype', 'teletype.ttf'),
 
-    '/terminal.js'  : ('application/javascript', 'terminal.js'), 
-    '/filestore.js' : ('application/javascript', 'filestore.js'), 
-    '/program.js'   : ('application/javascript', 'program.js'), 
-    '/session.js'   : ('application/javascript', 'session.js'), 
-    '/utility.js'   : ('application/javascript', 'utility.js'), 
-    '/main.js'      : ('application/javascript', 'main.js'), 
+    '/terminal.js'  : ('application/javascript', 'terminal.js'),
+    '/errorcode.js' : ('application/javascript', 'errorcode.js'),
+    '/filestore.js' : ('application/javascript', 'filestore.js'),
+    '/program.js'   : ('application/javascript', 'program.js'),
+    '/scanner.js'   : ('application/javascript', 'scanner.js'),
+    '/session.js'   : ('application/javascript', 'session.js'),
+    '/utility.js'   : ('application/javascript', 'utility.js'),
+    '/main.js'      : ('application/javascript', 'main.js'),
 
     '/unittest.html' : ('text/html', 'test/unittest.html'),
-    '/filestore.spec.js' : ('application/javascript', 'test/filestore.spec.js'), 
+    '/filestore.spec.js' : ('application/javascript', 'test/filestore.spec.js'),
+    '/scanner.spec.js' : ('application/javascript', 'test/scanner.spec.js'),
 }
 
 # Map from session id to its queue

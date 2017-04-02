@@ -22,4 +22,15 @@ namespace Utility {
         return hh+":"+mm+":"+ss
     }
 
+    export function isLetter(character : string) : boolean {
+        return "A" <= character && character <= "Z"
+    }
+
+    export function isDigit(character : string) : boolean {
+        return "0" <= character && character <= "9"
+    }
+
+    export function isSpace(character: string) : boolean {
+        return character === ' ' || character === '\t'
+    }
 }
