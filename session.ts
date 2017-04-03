@@ -223,6 +223,8 @@ namespace Session {
         // The currently loaded program
         private program_: Program
 
+        private lastError = ErrorCode.NoError
+
         public handleAsleep() {
             // Establish our event handler
             wto("handleAsleep establishing asleepGenerator")
@@ -231,6 +233,13 @@ namespace Session {
 
         public login(username: string, password: string) : boolean {
             return this.fileStore.loginUser(username, password)
+        }
+
+        public elapsed() : number {
+            // The number of minutes (rounded up) the user has been logged in
+            const milliseconds = (new Date).getTime() - this.startTime.getTime()
+            const msPerMin = 60*1000
+            return Math.ceil(milliseconds / msPerMin);
         }
 
         public start(tty: Terminal.Terminal) : void {
@@ -252,9 +261,59 @@ namespace Session {
             // Ignore blank lines:
             if (command === "") return true
 
+            // Try to parse the line. We end up with a successful parse,
+            // an error code or null indicating no content
+            const parser = new BasicParser
+            const node = parser.parse(command)
+            if (node instanceof ASTNode) {
+
+                // We have a command or an immediate statement
+                if (node instanceof Command) {
+
+                    // ? is a special case because the session has the
+                    // last error
+                    if (node instanceof QuestionCmd) {
+                        this.terminal.println(ErrorCode.textOf(this.lastError))
+                        return true
+                    }
+                    else {
+                        // Commands require no context
+                        const terminated = node instanceof ByeCmd;
+                        node.execute(this, this.terminal);
+                        return !terminated
+                    }
+                }
+                else {
+
+                    const statement : Statement = node;
+/*
+                    // Immediate statements may raise exceptions. Execute
+                    // them in our interactive context. If they produce
+                    // output but don't end the line (eg 'PRINT 3;') we
+                    // clean up ourselves
+                    try{
+                        statement.execute(_command_context);
+                        _command_context._owner._channels.close_channels();
+                    }
+                    catch (RunTimeError e) {
+                        _command_context._owner._channels.close_channels();
+                        ErrorCode.lastError = e._message;
+                        _tty.put_line(ErrorCode.lastError);
+                    }
+
+*/
+                }
+            }
+            else {
+
+                // We didn't parse it. Record the error for the '?'
+                // command
+                this.terminal.println(node);
+                this.lastError = node;
+            }
+
             // Indicate that we should carry on with this session
-            wto("session process " + command)
-            return command !== "BYE"
+            return true
         }
     }
 }

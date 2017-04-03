@@ -82,18 +82,21 @@ served = {
     '/space.wav'    : ('audio/x-wav', 'space.wav'),
     '/teletype.ttf' : ('application/x-font-truetype', 'teletype.ttf'),
 
-    '/terminal.js'  : ('application/javascript', 'terminal.js'),
-    '/errorcode.js' : ('application/javascript', 'errorcode.js'),
-    '/filestore.js' : ('application/javascript', 'filestore.js'),
-    '/program.js'   : ('application/javascript', 'program.js'),
-    '/scanner.js'   : ('application/javascript', 'scanner.js'),
-    '/session.js'   : ('application/javascript', 'session.js'),
-    '/utility.js'   : ('application/javascript', 'utility.js'),
-    '/main.js'      : ('application/javascript', 'main.js'),
+    '/ast.js'         : ('application/javascript', 'ast.js'),
+    '/basicparser.js' : ('application/javascript', 'basicparser.js'),
+    '/terminal.js'    : ('application/javascript', 'terminal.js'),
+    '/errorcode.js'   : ('application/javascript', 'errorcode.js'),
+    '/filestore.js'   : ('application/javascript', 'filestore.js'),
+    '/program.js'     : ('application/javascript', 'program.js'),
+    '/scanner.js'     : ('application/javascript', 'scanner.js'),
+    '/session.js'     : ('application/javascript', 'session.js'),
+    '/utility.js'     : ('application/javascript', 'utility.js'),
+    '/main.js'        : ('application/javascript', 'main.js'),
 
     '/unittest.html' : ('text/html', 'test/unittest.html'),
     '/filestore.spec.js' : ('application/javascript', 'test/filestore.spec.js'),
     '/scanner.spec.js' : ('application/javascript', 'test/scanner.spec.js'),
+    '/basicparser.spec.js' : ('application/javascript', 'test/basicparser.spec.js'),
 }
 
 # Map from session id to its queue

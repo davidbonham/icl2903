@@ -36,7 +36,7 @@ class ErrorCode
 
     public lastError = ErrorCode.NoError;
 
-    public textOf(code : string)
+    public static textOf(code : string)
     {
         if (code === ErrorCode.NoError) return "NO ERROR";
         if (code === ErrorCode.StatementNotRecognised) return "STATEMENT NOT RECOGNISED";
