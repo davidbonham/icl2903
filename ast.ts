@@ -10,7 +10,7 @@ abstract class Statement extends ASTNode {
 }
 
 abstract class Command extends ASTNode {
-    public execute(session: Session.Session, tty: Terminal.Terminal) : void {}
+    public execute(session: Session.Session) : void {}
 }
 
 // ? - Display the full text of the last error message
@@ -24,7 +24,7 @@ abstract class Command extends ASTNode {
 // executed. Instead the session spots the result of the parse and handles
 // it itself.
 class QuestionCmd extends Command {
-    public  execute(session: Session.Session, tty: Terminal.Terminal) : void {}
+    public  execute(session: Session.Session) : void {}
 }
 
 // BYE - log out from BASIC system
@@ -36,7 +36,7 @@ class QuestionCmd extends Command {
 // instance.
 
 class ByeCmd extends Command {
-    public  execute(session: Session.Session, tty: Terminal.Terminal) : void {
+    public  execute(session: Session.Session) : void {
 
         // Update the user's account for this session
         const elapsedMinutes = session.elapsed();
@@ -50,7 +50,7 @@ class ByeCmd extends Command {
         const time = ("0000" + elapsedMinutes).slice(-4)
 
         // Tell the user they've logged out
-        tty.println(time + " MINS. TERM. TIME.")
+        session.println(time + " MINS. TERM. TIME.")
     }
 }
 
@@ -66,21 +66,21 @@ class CatalogueCmd extends Command {
         return new CatalogueCmd(scanner.consumeKeyword("FULL"), library);
     }
 
-    public execute(session: Session.Session, tty: Terminal.Terminal): void {
+    public execute(session: Session.Session,): void {
 
         // Print the heading required for FULL
-        if (this.full) tty.println("  NAME     TYPE  DATE LAST USED  NO.BKTS. ACCESS");
+        if (this.full) session.println("  NAME     TYPE  DATE LAST USED  NO.BKTS. ACCESS");
         const paths: string[] = session.fileStore.catalogue(this.library);
 
         if (this.full) {
-            this.fullListing(tty, session.fileStore, paths);
+            this.fullListing(session, paths);
         }
         else {
-            this.briefListing(tty, session.fileStore, paths);
+            this.briefListing(session, paths);
         }
     }
 
-    protected fullListing(tty: Terminal.Terminal, fileStore: FileStore, paths: string[]){
+    protected fullListing(session: Session.Session, paths: string[]){
 
         // We produce a line of output for each file but we don't need to
         // poll the UI to see if we are interrupted as the production of
@@ -88,7 +88,7 @@ class CatalogueCmd extends Command {
         // to discard extra output after an interrupt.
         for (const path of paths) {
 
-            const info = fileStore.fileInfo(this.library, path)
+            const info = session.fileStore.fileInfo(this.library, path)
 
             // Left justify name on field of six spaces
             const name = (info.name + "     ").substring(0,6)
@@ -99,22 +99,22 @@ class CatalogueCmd extends Command {
             // Decode the access field
             const access = CatalogueCmd.access[info.access]
 
-            tty.println(name + "      " + info.type +"       " + info.date + "       " + size + "    " + access)
+            session.println(name + "      " + info.type +"       " + info.date + "       " + size + "    " + access)
         }
     }
 
-    protected briefListing(tty: Terminal.Terminal, fileStore: FileStore, paths: string[]) {
+    protected briefListing(session: Session.Session, paths: string[]) {
         let filesPrinted = 0;
         for(const path of paths) {
 
-            const info = fileStore.fileInfo(this.library, path)
+            const info = session.fileStore.fileInfo(this.library, path)
 
             // Left justify name on field of six spaces
             const name = (info.name + "     ").substring(0,6)
             const output = name + "    " + info.type + "  "
-            tty.print(output)
+            session.print(output)
             if (filesPrinted === 4) {
-                tty.println("");
+                session.println("");
                 filesPrinted = 0;
             }
             else {
@@ -122,7 +122,7 @@ class CatalogueCmd extends Command {
             }
         }
 
-        if (filesPrinted != 0) tty.println("");
-        tty.println("");
+        if (filesPrinted != 0) session.println("");
+        session.println("");
     }
 }

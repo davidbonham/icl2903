@@ -215,6 +215,9 @@ namespace Session {
             this.program_ = new Program
         };
 
+        public println(line: string) : void { this.terminal.println(line) }
+        public print(line: string) : void { this.terminal.print(line) }
+
         public get program() { return this.program_ }
 
         // When did the user log into this session?
@@ -279,7 +282,7 @@ namespace Session {
                     else {
                         // Commands require no context
                         const terminated = node instanceof ByeCmd;
-                        node.execute(this, this.terminal);
+                        node.execute(this);
                         return !terminated
                     }
                 }
