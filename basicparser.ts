@@ -162,6 +162,9 @@ class BasicParser
         else if (scanner.consumeCommand("BYE")) {
             return this.eoc(scanner, new ByeCmd)
         }
+        else if (scanner.consumeCommand("CAT")) {
+            return this.eoc(scanner, CatalogueCmd.parse(scanner, false));
+        }
 
         return ErrorCode.CommandNotRecognised
     }

@@ -211,7 +211,7 @@ namespace Session {
 
     export class Session {
 
-        constructor(private terminal : Terminal.Terminal, private fileStore: FileStore) {
+        constructor(private terminal : Terminal.Terminal, public readonly fileStore: FileStore) {
             this.program_ = new Program
         };
 
