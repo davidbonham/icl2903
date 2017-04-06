@@ -1,10 +1,62 @@
 
 namespace Terminal
 {
+    class Sounds {
+
+        protected soundBuffers : {[key: string] : AudioBuffer}
+        protected audioContext : AudioContext
+
+        constructor() {
+            this.audioContext = new AudioContext
+            this.soundBuffers = {}
+            this.loadAll()
+        }
+
+        protected load(key: string, uri: string) {
+
+            let request = new XMLHttpRequest();
+            request.open('GET', uri, true);
+            request.responseType = 'arraybuffer';
+            request.onload = () => {
+                let bufferarray = this.audioContext.decodeAudioData(
+                    request.response,
+                    (theBuffer) => this.soundBuffers[key] = theBuffer,
+                    () => console.log("ERROR failed to load audio data")
+                )
+                console.log("loaded " + uri + " as " + key);
+            }
+
+            request.send();
+            console.log("sent " + uri)
+        }
+
+        protected loadAll() {
+            this.load('space',    'silence.wav');
+            this.load('carriage', 'travelling.wav');
+            this.load('keyclick', 'typeonce.wav');
+            this.load('print',    'printonce.wav');
+            this.load('crlf',     'crlf.wav');
+        }
+
+        public playSound(key: string, when: number, loop: boolean, onended: (this: AudioBufferSourceNode, ev: MediaStreamErrorEvent) => any) {
+
+            let source : AudioBufferSourceNode = this.audioContext.createBufferSource()
+            source.buffer = this.soundBuffers[key];
+            source.loop = loop;
+            if (onended) {
+                source.onended = onended;
+            }
+            source.connect(this.audioContext.destination);
+            //console.log('playSound ' + key + ' after ' + when + ' at ' + (context.currentTime+when));
+            source.start(this.audioContext.currentTime + when);
+        }
+
+    }
+
     // The result expected to be yielded by a session handler. Are we to
-    // appear busy to the user and a sequence of printable elements that 
+    // appear busy to the user and a sequence of printable elements that
     // are to be printed but can be discarded if interrupted. The handler
-    // is not to be invoked again until output is complete. 
+    // is not to be invoked again until output is complete.
     export enum OutputType {Echo, NoEcho, Print, PrintLn}
     export type Output = {kind : OutputType; text?: string}
     export type HandlerResult = {busy: boolean; output?: Output[]}
@@ -28,7 +80,7 @@ namespace Terminal
 
             return false;
         }
-        
+
         constructor(private terminal: Terminal, private tty: HTMLTextAreaElement) {
 
             // Set up the callbacks for the interesting keyboard events. When these
@@ -96,12 +148,12 @@ namespace Terminal
          * caller until the device has finished printing - for example, as we
          * print at ten characters per second, "hello world" will not return
          * until eleven seconds have passed.
-         * 
-         * @param text 
+         *
+         * @param text
          */
         print(text: string) : void {
 
-            // This is a stub implementation which ignores the timing and 
+            // This is a stub implementation which ignores the timing and
             // displays the text immediately
             if (this.doEcho) {
                 for (let ch of text) {
@@ -118,7 +170,7 @@ namespace Terminal
         }
 
         // Whether or not to actually print the character (but we will still
-        // generate the keyprcess noise). This allows us to hide the entry of 
+        // generate the keyprcess noise). This allows us to hide the entry of
         // passwords, for example
         doEcho : boolean;
         get echo() : boolean     { return this.doEcho;}
@@ -140,7 +192,7 @@ namespace Terminal
 
         /**
          * Construct a new terminal object
-         * 
+         *
          * @param name  the name of an HTMLTextAreaElement to be used to display
          */
         constructor(id : string) {
@@ -151,6 +203,9 @@ namespace Terminal
                 this.printer = new Printer(tty);
                 this.keyboard = new Keyboard(this, tty);
                 this.output = new OutputAccumulator
+
+                // Set up the audio and load the samples from the server
+                this.sounds = new Sounds
 
                 // Look for the optional UI elements
                 this.debugToggle = <HTMLInputElement>document.getElementById("debug");
@@ -207,7 +262,7 @@ namespace Terminal
                         break;
                 }
             }
-            this.output = new OutputAccumulator            
+            this.output = new OutputAccumulator
             this.updateUI()
         }
 
@@ -234,8 +289,8 @@ namespace Terminal
             console.log("addCharacter '" + character + "' code=" + character.charCodeAt(0) + " isInterrupt=" + isInterrupt);
             if (isInterrupt) {
                 // If there is pending input, we discard it and indicate this to
-                // the user by displaying ' /x/' on the current line where x is 
-                // the interrupt character (C or Z). If we are busy, then there 
+                // the user by displaying ' /x/' on the current line where x is
+                // the interrupt character (C or Z). If we are busy, then there
                 // won't be anything to discard.
                 if (this.lineBuffer !== "") {
                     this.printer.println(" /" + character + "/");
@@ -244,7 +299,7 @@ namespace Terminal
                 this.generateEvent({kind: EventKind.Interrupt, interrupt: character})
             }
             else if (!this.busy) {
-            
+
                 if (character === "\b") {
                     // Erase the last character and display the back-arrow rubout
                     // character
@@ -262,6 +317,7 @@ namespace Terminal
                 else {
                     this.lineBuffer += character;
                     this.printer.print(character)
+                    this.sounds.playSound("print", 0, false, undefined)
                  }
            }
             else {
@@ -269,22 +325,23 @@ namespace Terminal
             }
         }
 
-        // Is the session busy? If so, keyboard input is not being accepted 
+        // Is the session busy? If so, keyboard input is not being accepted
         // unless it is an interrupt.
         private busy : boolean;
         public debug : boolean;
 
-        private keyboard   : Keyboard;
-        public  printer    : Printer;
-        private lineBuffer : string;
+        private keyboard   : Keyboard
+        public  printer    : Printer
+        private lineBuffer : string
+        protected sounds   : Sounds
 
-        // Optional controls 
+        // Optional controls
         private busyRadio : HTMLInputElement;
         private debugToggle : HTMLInputElement;
         private echoRadio : HTMLInputElement;
         private clearButton : HTMLButtonElement;
         private resetButton : HTMLButtonElement;
- 
+
         private output : OutputAccumulator
 
         public print(text: string) {
@@ -302,8 +359,8 @@ namespace Terminal
         public noecho() {
             this.output.noecho()
         }
-        
-        
+
+
         private currentHandler: IterableIterator<HandlerResult>
         private pendingHandler: IterableIterator<HandlerResult>
 
@@ -313,22 +370,22 @@ namespace Terminal
             const result = this.currentHandler.next({kind: EventKind.None})
             this.processHandlerResult(result.value)
             wto("Terminal.setHandler received busy=" + this.busy)
-        } 
+        }
 
         public setPendingHandler(handler: IterableIterator<HandlerResult>) {
             this.pendingHandler = handler;
-        }       
+        }
     }
 
     class OutputAccumulator {
 
         constructor(private pendingOutput: Output[] = []) {}
 
-        echo(): void { 
+        echo(): void {
             this.pendingOutput.push({kind: OutputType.Echo})
         }
 
-        noecho(): void { 
+        noecho(): void {
             this.pendingOutput.push({kind: OutputType.NoEcho})
         }
 

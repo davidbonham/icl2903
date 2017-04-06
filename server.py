@@ -75,12 +75,19 @@ fs_handlers = {
 }
 
 served = {
-    '/index.html'   : ('text/html', 'index.html'),
-    '/tstut.css'     : ('text/css', 'tstut.css'),
-    '/tty.mp3'      : ('audio/mpeg', 'tty.mp3'),
-    '/ttykey.wav'   : ('audio/x-wav', 'ttykey.wav'),
-    '/space.wav'    : ('audio/x-wav', 'space.wav'),
-    '/teletype.ttf' : ('application/x-font-truetype', 'teletype.ttf'),
+    '/index.html'     : ('text/html', 'index.html'),
+    '/tstut.css'      : ('text/css', 'tstut.css'),
+
+    '/tty.mp3'        : ('audio/mpeg',  'audio/tty.mp3'),
+    '/ttykey.wav'     : ('audio/x-wav', 'audio/ttykey.wav'),
+    '/space.wav'      : ('audio/x-wav', 'audio/space.wav'),
+    '/travelling.wav' : ('audio/x-wav', 'audio/travelling.wav'),
+    '/crlf.wav'       : ('audio/x-wav', 'audio/crlf.wav'),
+    '/printonce.wav'  : ('audio/x-wav', 'audio/printonce.wav'),
+    '/silence.wav'    : ('audio/x-wav', 'audio/silence.wav'),
+    '/typeonce.wav'   : ('audio/x-wav', 'audio/typeonce.wav'),
+
+    '/teletype.ttf'   : ('application/x-font-truetype', 'teletype.ttf'),
 
     '/ast.js'         : ('application/javascript', 'ast.js'),
     '/basicparser.js' : ('application/javascript', 'basicparser.js'),
@@ -93,9 +100,9 @@ served = {
     '/utility.js'     : ('application/javascript', 'utility.js'),
     '/main.js'        : ('application/javascript', 'main.js'),
 
-    '/unittest.html' : ('text/html', 'test/unittest.html'),
-    '/filestore.spec.js' : ('application/javascript', 'test/filestore.spec.js'),
-    '/scanner.spec.js' : ('application/javascript', 'test/scanner.spec.js'),
+    '/unittest.html'       : ('text/html', 'test/unittest.html'),
+    '/filestore.spec.js'   : ('application/javascript', 'test/filestore.spec.js'),
+    '/scanner.spec.js'     : ('application/javascript', 'test/scanner.spec.js'),
     '/basicparser.spec.js' : ('application/javascript', 'test/basicparser.spec.js'),
 }
 
