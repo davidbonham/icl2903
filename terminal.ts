@@ -47,17 +47,40 @@ namespace Terminal
                 source.onended = onended;
             }
             source.connect(this.audioContext.destination);
-            //console.log('playSound ' + key + ' after ' + when + ' at ' + (context.currentTime+when));
             source.start(this.audioContext.currentTime + when);
         }
 
+        public playCarriage(duration: number) : void {
+
+            // Set up the carriage travelling sound for the duration of the
+            // test's printing, looping it as required. We ramp the sound up
+            // at the start and down at the end to fade it out as we don't
+            // have an idle noise.
+
+            let carriage = this.audioContext.createBufferSource();
+            carriage.buffer = this.soundBuffers['carriage'];
+            carriage.loop = true;
+
+            var gain = this.audioContext.createGain();
+            gain.gain.linearRampToValueAtTime(1, this.audioContext.currentTime + duration);
+            gain.gain.linearRampToValueAtTime(0, this.audioContext.currentTime + duration + 1);
+
+            carriage.connect(gain);
+            gain.connect(this.audioContext.destination);
+
+            var startTime = this.audioContext.currentTime;
+            var stopTime = startTime + duration;
+
+            carriage.start(startTime);
+            carriage.stop(stopTime);
+        }
     }
 
     // The result expected to be yielded by a session handler. Are we to
     // appear busy to the user and a sequence of printable elements that
     // are to be printed but can be discarded if interrupted. The handler
     // is not to be invoked again until output is complete.
-    export enum OutputType {Echo, NoEcho, Print, PrintLn}
+    export enum OutputType {Echo, NoEcho, Print, Crlf}
     export type Output = {kind : OutputType; text?: string}
     export type HandlerResult = {busy: boolean; output?: Output[]}
 
@@ -134,8 +157,21 @@ namespace Terminal
     }
 
     class Printer {
+
+        protected sounds   : Sounds
+        protected printing : boolean
+        protected pending  : Output[]
+
         constructor(private tty: HTMLTextAreaElement) {
             this.doEcho = false;
+
+            // Set up the audio and load the samples from the server
+            this.sounds = new Sounds
+
+            // We're not currently printing anything
+            this.printing = false
+            this.pending = []
+            wto("ctor pending=" + this.pending.toString())
         }
 
         public clear() : void {
@@ -143,38 +179,148 @@ namespace Terminal
             this.tty.scrollTop = this.tty.scrollHeight;
         }
 
-        /**
-         * Print out the string on the current line. We don't return to the
-         * caller until the device has finished printing - for example, as we
-         * print at ten characters per second, "hello world" will not return
-         * until eleven seconds have passed.
-         *
-         * @param text
-         */
-        print(text: string) : void {
-
-            // This is a stub implementation which ignores the timing and
-            // displays the text immediately
-            if (this.doEcho) {
-                for (let ch of text) {
-                    // Convert dollars to pounds in a UK teletype font
-                    if (ch === '$') ch = 'l';
-                    this.tty.value += ch;
-                    this.tty.scrollTop = this.tty.scrollHeight;
+        protected printNext() : void {
+            wto("printNext pending=" + this.pending.toString())
+            while (this.pending.length > 0) {
+                const item: Output = this.pending.shift()
+                if (item.kind === OutputType.Echo) {
+                    wto("printNext dequeue ECHO")
+                    this.setEcho(true)
                 }
+                else if (item.kind === OutputType.NoEcho) {
+                    wto("printNext dequeue NOECHO")
+                    this.setEcho(false)
+                }
+                else if (item.kind === OutputType.Crlf) {
+                    wto("printNext dequeue CRLF echo=" + this.getEcho())
+                    if (this.getEcho()) {
+                        this.playText("\n")
+
+                        // Stop dequeueing elements until the current one
+                        // completes - it will call printNext again.
+                        return
+                    }
+                }
+                else {
+                    //OutputType.Print
+                   wto("printNext dequeue PRINT '" + item.text + "' echo=" + this.getEcho())
+                    if (this.getEcho()) {
+                        this.playText(item.text);
+
+                        // Stop dequeueing elements until the current one
+                        // completes - it will call printNext again.
+                        return
+                    }
+                }
+            }
+
+            wto("printNext: finished printing")
+            this.printing = false
+        }
+
+        protected startPrinting() : void {
+            wto("startPrinting pending=" + this.pending.toString() + " alreadyPrinting=" + this.printing)
+            if (!this.printing) {
+                this.printNext()
             }
         }
 
-        println(text : string) : void {
-            this.print(text + "\n");
+        public isPrinting() : boolean {
+            return this.printing
+        }
+
+        public echo(): void {
+            wto("--echo")
+            this.pending.push({kind: OutputType.Echo})
+            this.startPrinting()
+        }
+
+        noecho(): void {
+            wto("--noecho")
+            this.pending.push({kind: OutputType.NoEcho})
+            this.startPrinting()
+        }
+
+        println(text: string){
+            wto("--println " + text)
+            this.print(text)
+            this.crlf()
+            this.startPrinting()
+        }
+
+        print(text: string){
+            wto("--print " + text)
+            this.pending.push({kind: OutputType.Print, text: text})
+            this.startPrinting()
+        }
+
+        crlf() {
+            wto("--crlf")
+            this.pending.push({kind: OutputType.Crlf})
+            this.startPrinting()
+        }
+
+        public flush() : void {
+            // Empty the queue of any text we are printing
+            this.pending = []
         }
 
         // Whether or not to actually print the character (but we will still
         // generate the keyprcess noise). This allows us to hide the entry of
         // passwords, for example
         doEcho : boolean;
-        get echo() : boolean     { return this.doEcho;}
-        set echo(value: boolean) { this.doEcho = value;}
+        getEcho() : boolean     { return this.doEcho;}
+        setEcho(value: boolean) { this.doEcho = value;}
+
+        public playText(text: string) : void {
+
+            const duration = text.length * 0.1;
+            wto("playText '" + text + "' duration " + duration)
+
+            if (text.length === 0) {
+                wto("playText empty string")
+                 setTimeout(() => this.printNext())
+                 return
+            }
+            this.printing = true
+            let printed = 0
+
+            // If we have more than one character, play the carriage motion
+            if (text.length > 1) this.sounds.playCarriage(text.length/10.0)
+
+            for (let i = 0; i < text.length; ++i) {
+
+                // Spaces and carriage returns have a different sound to printed
+                // characters. Choose the right sound
+                const sample = text.charAt(i) === ' ' ? 'space' : text.charAt(i) === '\n' ? 'crlf' : 'print';
+
+                // Play the sound for this character. When the sound completes,
+                // display the character.
+                this.sounds.playSound(sample, i/10.0, false, () => {
+
+                    let ch = text.charAt(printed);
+                    if (ch == '$') ch = 'l';
+
+                    this.tty.value += ch;
+                    printed++;
+                    this.tty.scrollTop = this.tty.scrollHeight;
+
+                    // If we have printed the last character in this element
+                    // and there is another element, set a timer to start the
+                    // next
+                    if (printed == text.length) {
+                        wto("playSound finished")
+                        setTimeout(() => this.printNext())
+                    }
+                })
+            }
+        }
+
+        public key(ch: string) {
+            this.sounds.playSound('keyclick', 0, false, null)
+            this.tty.value += ch;
+            this.tty.scrollTop = this.tty.scrollHeight;
+        }
     }
 
     export const enum EventKind {None, Quit, Line, Interrupt}
@@ -202,10 +348,6 @@ namespace Terminal
                 // Wire up the terminal components
                 this.printer = new Printer(tty);
                 this.keyboard = new Keyboard(this, tty);
-                this.output = new OutputAccumulator
-
-                // Set up the audio and load the samples from the server
-                this.sounds = new Sounds
 
                 // Look for the optional UI elements
                 this.debugToggle = <HTMLInputElement>document.getElementById("debug");
@@ -230,39 +372,23 @@ namespace Terminal
 
         private updateUI() : void {
             this.busyRadio.checked = this.busy;
-            this.echoRadio.checked = this.printer.echo;
+            this.echoRadio.checked = this.printer.getEcho();
             this.debug = this.debugToggle.checked
         }
 
         private reset() : void {
-            this.lineBuffer = "";
-            this.busy = true;
-            this.printer.echo = true;
-            this.printer.clear();
-            this.updateUI();
-            this.debug = false;
+            this.lineBuffer = ""
+            this.busy = true
+            this.printer.echo()
+            this.printer.clear()
+            this.printer.flush()
+            this.updateUI()
+            this.debug = false
         }
 
         private processHandlerResult(result : HandlerResult) : void {
 
             this.busy = result.busy
-            for (const op of this.output.finish()) {
-                switch (op.kind) {
-                    case OutputType.Echo:
-                        this.printer.echo = true
-                        break;
-                    case OutputType.NoEcho:
-                        this.printer.echo = false
-                        break;
-                    case OutputType.Print:
-                        this.printer.print(op.text)
-                        break;
-                    case OutputType.PrintLn:
-                        this.printer.println(op.text)
-                        break;
-                }
-            }
-            this.output = new OutputAccumulator
             this.updateUI()
         }
 
@@ -286,19 +412,42 @@ namespace Terminal
 
         public addCharacter(character: string, isInterrupt: boolean = false) {
 
-            console.log("addCharacter '" + character + "' code=" + character.charCodeAt(0) + " isInterrupt=" + isInterrupt);
+            console.log("addCharacter '" + character +
+                        "' code=" + character.charCodeAt(0) +
+                        " isInterrupt=" + isInterrupt +
+                        "busy=" + this.busy +
+                        "printing=" + this.printer.isPrinting());
+
             if (isInterrupt) {
-                // If there is pending input, we discard it and indicate this to
-                // the user by displaying ' /x/' on the current line where x is
-                // the interrupt character (C or Z). If we are busy, then there
-                // won't be anything to discard.
-                if (this.lineBuffer !== "") {
-                    this.printer.println(" /" + character + "/");
-                    this.lineBuffer = "";
+
+                if (this.busy) {
+                    // Flush the output generated so far and pass the interrupt
+                    // to the session to generate BREAK IN or LINE nnnn BREAK
+                    // IN as appropriate
+                    this.printer.flush()
+                    this.generateEvent({kind: EventKind.Interrupt, interrupt: character})
                 }
-                this.generateEvent({kind: EventKind.Interrupt, interrupt: character})
+                else if (this.printer.isPrinting()) {
+
+                    // Flush the output and generate a BREAK IN message
+                    // ourselves
+                    this.printer.flush()
+                    this.printer.crlf()
+                    this.printer.println("BREAK IN")
+                }
+                else {
+                    // If there is pending input, we discard it and indicate this to
+                    // the user by displaying ' /x/' on the current line where x is
+                    // the interrupt character (C or Z). If we are busy, then there
+                    // won't be anything to discard.
+                    this.printer.flush()
+                    if (this.lineBuffer !== "") {
+                        this.printer.println("/" + character + "/");
+                        this.lineBuffer = "";
+                    }
+                }
             }
-            else if (!this.busy) {
+            else if (!this.busy && !this.printer.isPrinting()) {
 
                 if (character === "\b") {
                     // Erase the last character and display the back-arrow rubout
@@ -306,7 +455,7 @@ namespace Terminal
                     if (this.lineBuffer != "") {
                         this.lineBuffer = this.lineBuffer.slice(0, -1);
                         character = '_'
-                        this.printer.print(character)
+                        this.printer.key(character)
                     }
                 }
                 else if (character == "\r") {
@@ -316,14 +465,14 @@ namespace Terminal
                 }
                 else {
                     this.lineBuffer += character;
-                    this.printer.print(character)
-                    this.sounds.playSound("print", 0, false, undefined)
+                    this.printer.key(character)
                  }
-           }
+            }
             else {
                 // We are busy so we discard any non-interrupt keys
             }
         }
+
 
         // Is the session busy? If so, keyboard input is not being accepted
         // unless it is an interrupt.
@@ -333,7 +482,6 @@ namespace Terminal
         private keyboard   : Keyboard
         public  printer    : Printer
         private lineBuffer : string
-        protected sounds   : Sounds
 
         // Optional controls
         private busyRadio : HTMLInputElement;
@@ -341,25 +489,6 @@ namespace Terminal
         private echoRadio : HTMLInputElement;
         private clearButton : HTMLButtonElement;
         private resetButton : HTMLButtonElement;
-
-        private output : OutputAccumulator
-
-        public print(text: string) {
-            this.output.print(text)
-        }
-
-        public println(text: string) {
-            this.output.println(text)
-        }
-
-        public echo() {
-            this.output.echo()
-        }
-
-        public noecho() {
-            this.output.noecho()
-        }
-
 
         private currentHandler: IterableIterator<HandlerResult>
         private pendingHandler: IterableIterator<HandlerResult>
@@ -375,37 +504,26 @@ namespace Terminal
         public setPendingHandler(handler: IterableIterator<HandlerResult>) {
             this.pendingHandler = handler;
         }
-    }
 
-    class OutputAccumulator {
-
-        constructor(private pendingOutput: Output[] = []) {}
-
-        echo(): void {
-            this.pendingOutput.push({kind: OutputType.Echo})
+        public print(text: string) {
+            this.printer.print(text)
         }
 
-        noecho(): void {
-            this.pendingOutput.push({kind: OutputType.NoEcho})
+        public println(text: string) {
+            this.printer.println(text)
         }
 
-        println(text: string)
-        {
-            this.pendingOutput.push({kind: OutputType.PrintLn, text: text})
+        public crlf() {
+            this.printer.crlf()
         }
 
-        print(text: string)
-        {
-            this.pendingOutput.push({kind: OutputType.Print, text: text})
+        public echo() {
+            this.printer.setEcho(true)
         }
 
-        finish () : Output[] {
-            const current = this.pendingOutput
-            this.pendingOutput = []
-            return current
+        public noecho() {
+            this.printer.setEcho(false)
         }
     }
-
-
 }
 
