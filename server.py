@@ -1,9 +1,14 @@
+#!/usr/bin/python
+
+
+import sys
+
 import BaseHTTPServer
 import collections
 import datetime
 import os
-import sys
 import time
+
 
 global filesystem_root
 filesystem_root = None
@@ -15,7 +20,7 @@ def load_handler(request):
 
     name = request[1]
     path = os.path.join(filesystem_root, name)
-    print path
+
     # We don't allow any path information in filenames
     if os.path.pathsep in name:
         return 'ERROR: bad file name ' + name
@@ -78,14 +83,14 @@ served = {
     '/index.html'     : ('text/html', 'index.html'),
     '/tstut.css'      : ('text/css', 'tstut.css'),
 
-    '/tty.mp3'        : ('audio/mpeg',  'audio/tty.mp3'),
-    '/ttykey.wav'     : ('audio/x-wav', 'audio/ttykey.wav'),
-    '/space.wav'      : ('audio/x-wav', 'audio/space.wav'),
-    '/travelling.wav' : ('audio/x-wav', 'audio/travelling.wav'),
-    '/crlf.wav'       : ('audio/x-wav', 'audio/crlf.wav'),
-    '/printonce.wav'  : ('audio/x-wav', 'audio/printonce.wav'),
-    '/silence.wav'    : ('audio/x-wav', 'audio/silence.wav'),
-    '/typeonce.wav'   : ('audio/x-wav', 'audio/typeonce.wav'),
+    '/tty.mp3'        : ('audio/mpeg',  'tty.mp3'),
+    '/ttykey.wav'     : ('audio/x-wav', 'ttykey.wav'),
+    '/space.wav'      : ('audio/x-wav', 'space.wav'),
+    '/travelling.wav' : ('audio/x-wav', 'travelling.wav'),
+    '/crlf.wav'       : ('audio/x-wav', 'crlf.wav'),
+    '/printonce.wav'  : ('audio/x-wav', 'printonce.wav'),
+    '/silence.wav'    : ('audio/x-wav', 'silence.wav'),
+    '/typeonce.wav'   : ('audio/x-wav', 'typeonce.wav'),
 
     '/teletype.ttf'   : ('application/x-font-truetype', 'teletype.ttf'),
 
@@ -153,9 +158,30 @@ def run():
     httpd = server_class(('', 8000), MyHandler)
     httpd.serve_forever()
 
+
+def post():
+
+    import cgitb
+    cgitb.enable()
+    import cgi
+
+    command = sys.stdin.read()
+
+    request = command.split()
+    response = fs_handlers.get(request[0], error_handler)(request)
+    print "Content-Type: text/plain; charset=us-ascii"
+    print
+    print response
+
+
 if __name__ == '__main__':
 
-    filesystem_root = sys.argv[1]
-    if not os.path.isdir(filesystem_root):
-        print >>stderr, filesystem_root, 'is not a directory'
-    run()
+    if len(sys.argv) == 2:
+        filesystem_root = sys.argv[1]
+        if not os.path.isdir(filesystem_root):
+            print >>stderr, filesystem_root, 'is not a directory'
+        else:
+            run()
+    else:
+        filesystem_root = '../httpdocs/icl2903/tmpfs'
+        post()
