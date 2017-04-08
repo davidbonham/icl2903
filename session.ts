@@ -23,7 +23,7 @@ namespace Session {
      */
     function* asleepGenerator (session: Session, tty: Terminal.Terminal) : IterableIterator<Terminal.HandlerResult> {
         wto("enter asleepGenerator - set echo false")
-        tty.noecho();
+        tty.echo();
         for (;;)
         {
             wto("asleepGenerator yielding to receive ctrl-a as busy")
@@ -196,8 +196,8 @@ namespace Session {
                     }
                     else if (event.kind == Terminal.EventKind.Interrupt) {
                         // Interrupting while nothing is running is harmless
-                        tty.println("");
-                        tty.println("BREAK IN IGNORED");
+                        tty.crlf();
+                        tty.println("BREAK IN");
                     }
                 }
             }
@@ -217,6 +217,7 @@ namespace Session {
 
         public println(line: string) : void { this.terminal.println(line) }
         public print(line: string) : void { this.terminal.print(line) }
+        public crlf() : void { this.terminal.crlf() }
 
         public get program() { return this.program_ }
 
