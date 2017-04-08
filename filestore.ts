@@ -91,7 +91,7 @@ class FileStore
         }
 
         // Check we are at the end of the archive
-        if (archive != "EOD")  {
+        if (archive.trim() != "EOD")  {
             this.log("CORRUPT FILESPACE")
         }
 
@@ -126,6 +126,14 @@ class FileStore
         return false;
     }
 
+    /**
+     * Return a list of the files held in this user's catalogue (or the
+     * shared library if indicated)
+     *
+     * We search all of the session storage for files owned by the user.
+     *
+     * @param isLibrary     use LIBRY instead of the logged in user.
+     */
     public catalogue(isLibrary: boolean): string[] {
         const name = isLibrary ? "LIBRY" : this.username
         const prefix = "FILE_INFO_" + name + "_"
@@ -142,16 +150,28 @@ class FileStore
 
     public fileInfo(isLibrary: boolean, path: string) : any {
         const name = isLibrary ? "LIBRY" : this.username
+
+        // Currently, the onlyt thing the info holds is the timestemp in
+        // the format ddmmyyyyhhmmss.
         const infoKey = "FILE_INFO_" + name + "_" + path
-        wto("infoKey=" + infoKey)
         const info = sessionStorage[infoKey]
         const timestamp = info.substring(0,2) + "/" + info.substring(2,4) + "/" + info.substring(6, 8)
 
+        // Get the contents of the file so we can calculate its size and
+        // retrieve its file format &c
         const dataKey = "FILE_DATA_" + name + "_" + path
         const data = sessionStorage[dataKey]
+
+        // This seems to be an approximation to the size of the file in
+        // bucket on the real system.
         const buckets = Math.ceil((data.length + 3 * 128 - 1) / (3 * 128));
+
+        // Type is B for BASIC and so on
         const type = data[0]
+
+        // Access is R for READ and so on
         const access = data[1]
+
         const result = {"name": path, "date": timestamp, "buckets": buckets, "type": type, "access": access}
         return result
     }
@@ -178,7 +198,7 @@ class FileStore
 
         }
 
-        ourRequest.open('POST', 'http://' + window.location.host + '/icl2903/p', true);
+        ourRequest.open('POST', 'http://' + window.location.host + '/cgi-bin/server.py', true);
         ourRequest.setRequestHeader("Content-Type", "text/plain;charset=UTF-8");
         ourRequest.send(message);
     }
