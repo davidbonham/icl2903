@@ -56,12 +56,27 @@ class ByeCmd extends Command {
 
 class CatalogueCmd extends Command {
 
+    // Convert the file access character into the string we present to the
+    // user
     protected static access : {[abbrev:string]: string} = {'U': "USER", 'S': "SHARE", 'R': "READ", 'W': "WRITE", 'X': "RUN"}
 
+    /**
+     * The parser will construct a command to execute.
+     *
+     * @param full      Give full details, one file per line, not brief
+     * @param library   Show files in the library, not the user's catalogue
+     */
     protected constructor (private full: boolean, private library: boolean) {
         super()
     }
 
+    /**
+     * Parse the rest of the command following a CAT or LIB command. We
+     * expect an empty line or FULL.
+     *
+     * @param scanner   Scanner positioned at the end of CAT or LIB
+     * @param library   Is this a LIB rather than a CAT?
+     */
     public static parse(scanner: Scanner, library: boolean) : CatalogueCmd {
         return new CatalogueCmd(scanner.consumeKeyword("FULL"), library);
     }
@@ -111,10 +126,15 @@ class CatalogueCmd extends Command {
 
             // Left justify name on field of six spaces
             const name = (info.name + "     ").substring(0,6)
+
+            // Print one file name at a time so that the user can break
+            // without having to wait to the end
             const output = name + "    " + info.type + "  "
             session.print(output)
+
+            // Print four files per line.
             if (filesPrinted === 4) {
-                session.println("");
+                session.crlf();
                 filesPrinted = 0;
             }
             else {
@@ -122,7 +142,7 @@ class CatalogueCmd extends Command {
             }
         }
 
-        if (filesPrinted != 0) session.println("");
-        session.println("");
+        if (filesPrinted != 0) session.crlf();
+        session.crlf();
     }
 }
