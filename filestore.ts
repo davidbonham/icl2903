@@ -39,7 +39,7 @@ class FileStore
             this.perform("HELLO", (request: XMLHttpRequest|undefined) => {
                 this.recentlyOnline = request !== undefined && request.status == 200
                 this.updateUI();
-            })}, 1000000)
+            })}, 10000000)
 
         // Get user accounting info and update the object we created above
         this.perform("LOAD _ACCOUNTS", (request: XMLHttpRequest|undefined) => {
