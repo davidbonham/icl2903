@@ -2,6 +2,7 @@
 /// <reference path="filestore.ts" />
 /// <reference path="utility.ts" />
 /// <reference path="program.ts" />
+/// <reference path="context.ts" />
 
 namespace Session {
 
@@ -212,12 +213,15 @@ namespace Session {
     export class Session {
 
         constructor(private terminal : Terminal.Terminal, public readonly fileStore: FileStore) {
-            this.program_ = new Program
+            this.program_ = new Program(this)
+            this.commandContext = new Context(null, this.program_)
         };
 
         public println(line: string) : void { this.terminal.println(line) }
         public print(line: string) : void { this.terminal.print(line) }
         public crlf() : void { this.terminal.crlf() }
+
+        protected commandContext: Context
 
         public get program() { return this.program_ }
 
@@ -227,6 +231,7 @@ namespace Session {
         // The currently loaded program
         private program_: Program
 
+        // The error string used by the ? command
         private lastError = ErrorCode.NoError
 
         public handleAsleep() {
@@ -255,6 +260,10 @@ namespace Session {
             tty.println(date + " TIME " + time)
             tty.println("READY")
             tty.println("")
+        }
+
+        public run(line: number) {
+            this.program_.run(line, this.commandContext, true)
         }
 
         public perform(command: string) : boolean {

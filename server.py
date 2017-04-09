@@ -96,6 +96,7 @@ served = {
 
     '/ast.js'         : ('application/javascript', 'ast.js'),
     '/basicparser.js' : ('application/javascript', 'basicparser.js'),
+    '/context.js'     : ('application/javascript', 'context.js'),
     '/terminal.js'    : ('application/javascript', 'terminal.js'),
     '/errorcode.js'   : ('application/javascript', 'errorcode.js'),
     '/filestore.js'   : ('application/javascript', 'filestore.js'),

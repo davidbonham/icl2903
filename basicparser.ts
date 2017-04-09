@@ -165,25 +165,22 @@ class BasicParser
         else if (scanner.consumeCommand("CAT")) {
             return this.eoc(scanner, CatalogueCmd.parse(scanner, false));
         }
+        else if (scanner.consumeCommand("LIB"))
+        {
+            return this.eoc(scanner, CatalogueCmd.parse(scanner, true));
+        }
+        else if (scanner.consumeCommand("RUN"))
+        {
+            return this.eoc(scanner, RunCmd.parse(scanner));
+        }
+
 
         return ErrorCode.CommandNotRecognised
     }
         /*
-        if (scanner.consume_symbol(Scanner.TokenType.QUES))
-        {
-            return eoc(scanner, new QuestionCmd());
-        }
-        else if (scanner.consume_command("BYE"))
-        {
-            return eoc(scanner, new ByeCmd());
-        }
         else if (scanner.consume_command("ACC"))
         {
             return eoc(scanner, new AccountCmd());
-        }
-        else if (scanner.consume_command("CAT"))
-        {
-            return eoc(scanner, CatalogueCmd.parse(scanner, false));
         }
         else if (scanner.consume_command("CON"))
         {
@@ -211,10 +208,6 @@ class BasicParser
         {
             return eoc(scanner, KillCmd.parse(scanner));
         }
-        else if (scanner.consume_command("LIB"))
-        {
-            return eoc(scanner, CatalogueCmd.parse(scanner, true));
-        }
         else if (scanner.consume_command("LEN"))
         {
             return eoc(scanner, LengthCmd.parse(scanner));
@@ -238,10 +231,6 @@ class BasicParser
                 || scanner.consume_command("REN"))
         {
             return eoc(scanner, RenumberCmd.parse(scanner));
-        }
-        else if (scanner.consume_command("RUN"))
-        {
-            return eoc(scanner, RunCmd.parse(scanner));
         }
         else if (scanner.consume_command("SAV"))
         {

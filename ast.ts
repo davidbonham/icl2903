@@ -10,7 +10,7 @@ abstract class Statement extends ASTNode {
 }
 
 abstract class Command extends ASTNode {
-    public execute(session: Session.Session) : void {}
+    public abstract execute(session: Session.Session) : void
 }
 
 // ? - Display the full text of the last error message
@@ -144,5 +144,22 @@ class CatalogueCmd extends Command {
 
         if (filesPrinted != 0) session.crlf();
         session.crlf();
+    }
+}
+
+class RunCmd extends Command
+{
+
+    protected constructor(protected line: number){
+        super()
+    }
+
+    public static parse(scanner: Scanner) : RunCmd {
+        const line = scanner.consumeLinenumber();
+        return line === undefined ? new RunCmd(0) : new RunCmd(line)
+    }
+
+    public execute(session: Session.Session) {
+        session.run(this.line);
     }
 }
