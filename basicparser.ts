@@ -5,11 +5,13 @@ class BasicParser
 {
     private error: ErrorCode
 
-    constructor() {
-        this.error = new ErrorCode
+    constructor () {
+        this.error = new ErrorCode()
+        this.error.set(ErrorCode.NoError)
     }
+
 /*
-    private static ASTNode syn(string code)
+    private  ASTNode syn(string code)
     {
         ErrorCode.set(code);
         return null;
@@ -58,7 +60,7 @@ class BasicParser
     }
 
     public parseStatement(scanner: Scanner) : Statement | undefined {
-        return undefined
+        return EndStmt.parse(scanner)
         /*
         return ChangeStmt.parseChange(scanner, out statement)
             || DataStmt.parseData(scanner, out statement)
@@ -88,71 +90,60 @@ class BasicParser
             || ReturnStmt.parseReturn(scanner, out statement);
             */
     }
-/*
-    private static bool parseStatementSequence(Scanner scanner, out SequenceStmt tree)
-    {
+
+    protected parseStatementSequence(scanner: Scanner) : SequenceStmt {
+
         // We must have at least one statement next. If we fail, then
         // return its syntax error
-        Statement statement;
-        if (!parseStatement(scanner, out statement))
-        {
-            ErrorCode.set(ErrorCode.StatementNotRecognised);
-            tree = null;
-            return false;
+        const statement = this.parseStatement(scanner)
+        if (statement == undefined) {
+
+            this.error.set(ErrorCode.StatementNotRecognised)
+            return null;
         }
 
         // Either we have reached the end of the statements or we must have
         // a statement separator before the next one
-        if (scanner.at_eol())
-        {
+        if (scanner.atEol()) {
             // This is the last element of the sequence
-            tree =  new SequenceStmt(statement, null);
-            return true;
+            return  new SequenceStmt(statement, null);
         }
 
-        if (!scanner.consume_symbol(Scanner.TokenType.SEP))
-        {
+        if (!scanner.consumeSymbol(TokenType.SEP)) {
             // No separator - this text is unexpected
-            ErrorCode.set(ErrorCode.CharacterAfterStatement);
-            tree = null;
-            return false;
+            this.error.set(ErrorCode.CharacterAfterStatement)
+            return null;
         }
 
         // Got a separator so there must be more statements
-        SequenceStmt rest;
-        if (!parseStatementSequence(scanner, out rest))
-        {
-            tree = null;
-            return false;
+        const rest = this.parseStatementSequence(scanner)
+        if (rest == undefined) {
+            return null
         }
+
         // Success!
-        tree = new SequenceStmt(statement, rest);
-        return true;
+        return new SequenceStmt(statement, rest)
     }
 
-    private static ASTNode parseEdit(Scanner scanner, int lineNo)
-    {
-        if (scanner.at_eol())
-        {
+    protected parseEdit(scanner: Scanner, lineNo: number) : ASTNode {
+
+        if (scanner.atEol()) {
             // A line number on its own means delete that line if it exists
             return new DeleteCmd(new LineRangeNode(lineNo, lineNo));
         }
-        else
-        {
+        else {
             // The text after the line number must be a valid BASIC statement
             // sequence.
-            SequenceStmt statementSeq;
-            if (parseStatementSequence(scanner, out statementSeq))
-            {
+            const statementSeq : SequenceStmt = this.parseStatementSequence(scanner)
+            if (statementSeq != undefined) {
                 return new LineCmd(lineNo, statementSeq);
             }
-            else
-            {
-                return null;
+            else {
+                return this.error;
             }
         }
     }
-*/
+
     public parseCommand(scanner: Scanner) : ASTNode {
 
         if (scanner.consumeCommand("?")) {
@@ -268,8 +259,7 @@ class BasicParser
         const lineNo = scanner.consumeLinenumber()
         if (lineNo != undefined) {
             // Lines starting with a line number are edits to the program
-            //return parseEdit(scanner, lineNo);
-            return null
+            return this.parseEdit(scanner, lineNo);
         }
         else
         {

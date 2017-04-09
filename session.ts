@@ -119,7 +119,7 @@ namespace Session {
                                     // letting the user type over the @s,
                                     // we stopped the effect of their crlf
                                     // so imitate that now
-                                    tty.println("")
+                                    tty.crlf()
                                 }
                             }
                             if (!session.login(user, password)){
@@ -278,51 +278,50 @@ namespace Session {
             // an error code or null indicating no content
             const parser = new BasicParser
             const node = parser.parse(command)
-            if (node instanceof ASTNode) {
+            if (node instanceof Command) {
 
-                // We have a command or an immediate statement
-                if (node instanceof Command) {
-
-                    // ? is a special case because the session has the
-                    // last error
-                    if (node instanceof QuestionCmd) {
-                        this.terminal.println(ErrorCode.textOf(this.lastError))
-                        return true
-                    }
-                    else {
-                        // Commands require no context
-                        const terminated = node instanceof ByeCmd;
-                        node.execute(this);
-                        return !terminated
-                    }
+                // ? is a special case because the session has the
+                // last error
+                if (node instanceof QuestionCmd) {
+                    this.terminal.println(ErrorCode.textOf(this.lastError))
+                    return true
                 }
                 else {
-
-                    const statement : Statement = node;
-/*
-                    // Immediate statements may raise exceptions. Execute
-                    // them in our interactive context. If they produce
-                    // output but don't end the line (eg 'PRINT 3;') we
-                    // clean up ourselves
-                    try{
-                        statement.execute(_command_context);
-                        _command_context._owner._channels.close_channels();
-                    }
-                    catch (RunTimeError e) {
-                        _command_context._owner._channels.close_channels();
-                        ErrorCode.lastError = e._message;
-                        _tty.put_line(ErrorCode.lastError);
-                    }
-
-*/
+                    // Commands require no context
+                    const terminated = node instanceof ByeCmd;
+                    node.execute(this);
+                    return !terminated
                 }
             }
-            else {
+            else if (node instanceof Statement) {
+
+                const statement : Statement = node;
+/*
+                // Immediate statements may raise exceptions. Execute
+                // them in our interactive context. If they produce
+                // output but don't end the line (eg 'PRINT 3;') we
+                // clean up ourselves
+                try{
+                    statement.execute(_command_context);
+                    _command_context._owner._channels.close_channels();
+                }
+                catch (RunTimeError e) {
+                    _command_context._owner._channels.close_channels();
+                    ErrorCode.lastError = e._message;
+                    _tty.put_line(ErrorCode.lastError);
+                }
+
+*/
+            }
+            else if (typeof(node) == "string") {
 
                 // We didn't parse it. Record the error for the '?'
                 // command
                 this.terminal.println(node);
                 this.lastError = node;
+            }
+            else {
+                wto("ERROR unexpected value returned by parser")
             }
 
             // Indicate that we should carry on with this session

@@ -33,4 +33,8 @@ namespace Utility {
     export function isSpace(character: string) : boolean {
         return character === ' ' || character === '\t'
     }
+
+    export class RunTimeError {
+        constructor(public readonly error: string){}
+    }
 }

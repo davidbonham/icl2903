@@ -46,6 +46,44 @@ class Program {
         return count
     }
 
+    public add(lineNo: number, statement: Statement) : void {
+
+        // We've changed the program so it needs to be run again before it
+        // can be continued
+        this.continuable = false;
+
+        // Delete any line at this number
+        this.delete(lineNo, lineNo)
+
+        // Simple statements can be inserted immediately but sequences must
+        // be expanded
+        if (statement instanceof SequenceStmt) {
+            let offset = 0
+            for (let node : SequenceStmt = statement; node != null; node = node.next) {
+                this.contents[lineNo*100+offset] = node.statement
+                offset++
+            }
+        }
+        else {
+            this.contents[lineNo*100] = statement
+        }
+    }
+
+    public delete(from: number, to: number) : void {
+
+        // We've changed the program so it needs to be run again before it
+        // can be continued
+        this.continuable = false;
+
+        // We have been given line numbers so convert these to the largest
+        // range of indices
+        const low = from * 100
+        const high = to*100 + 99
+
+        // Keep lines not in that range
+        this.contents = this.contents.filter((stmt, index) => index < low || high < index)
+    }
+
     public run(line: number, context: Context, run: boolean) : void {
         if (this.lineCount() == 0) {
             this.session.println("NO PROGRAM");
@@ -65,4 +103,13 @@ class Program {
     public stepInput(text: string) : void {
     }
 
+    public terminate() {
+        // Wind down at the end of a program. There may be pending output
+        // on the terminal and file channels
+        //System.Diagnostics.Debug.Assert(context._owner._channels.get(0) is TerminalChannel);
+        //    TerminalChannel tty = (TerminalChannel)context._owner._channels.get(0);
+        //    tty.writes("");
+        //    tty.eol();
+        this.session.crlf()
+    }
 }

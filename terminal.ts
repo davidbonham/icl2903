@@ -80,8 +80,8 @@ namespace Terminal
     // appear busy to the user and a sequence of printable elements that
     // are to be printed but can be discarded if interrupted. The handler
     // is not to be invoked again until output is complete.
-    export enum OutputType {Echo, NoEcho, Print, Crlf}
-    export type Output = {kind : OutputType; text?: string}
+    export enum OutputType {Echo, NoEcho, Print, Crlf, Defer}
+    export type Output = {kind : OutputType; text?: string; deferred?: () => void}
     export type HandlerResult = {busy: boolean; output?: Output[]}
 
     class Keyboard {
@@ -180,7 +180,7 @@ namespace Terminal
         }
 
         protected printNext() : void {
-            wto("printNext pending=" + this.pending.toString())
+            wto("printNext pending=" + this.pending.toString() + " echo=" + this.getEcho())
             while (this.pending.length > 0) {
                 const item: Output = this.pending.shift()
                 if (item.kind === OutputType.Echo) {
@@ -192,7 +192,7 @@ namespace Terminal
                     this.setEcho(false)
                 }
                 else if (item.kind === OutputType.Crlf) {
-                    wto("printNext dequeue CRLF echo=" + this.getEcho())
+                    wto("printNext dequeue CRLF echo=" + this.getEcho() + " and return")
                     if (this.getEcho()) {
                         this.playText("\n")
 
@@ -201,9 +201,8 @@ namespace Terminal
                         return
                     }
                 }
-                else {
-                    //OutputType.Print
-                   wto("printNext dequeue PRINT '" + item.text + "' echo=" + this.getEcho())
+                else if (item.kind == OutputType.Print) {
+                   wto("printNext dequeue PRINT '" + item.text + "' echo=" + this.getEcho() + " and return")
                     if (this.getEcho()) {
                         this.playText(item.text);
 
@@ -212,15 +211,29 @@ namespace Terminal
                         return
                     }
                 }
+                else {
+                    // Deferred. This should be the final item in the list
+                    wto("printNext dequeue DEFER echo=" + this.getEcho())
+                    if (this.pending.length > 0) {
+                        wto("ERROR deferred item is not the last in the queue - ignored")
+                    }
+                    else {
+                        // As this is the last item in the list we can safely
+                        // indicate we are no longer printing
+                        this.printing = false
+                        item.deferred ()
+                    }
+                }
             }
 
-            wto("printNext: finished printing")
+            wto("printNext: finished printing set printing=false")
             this.printing = false
         }
 
         protected startPrinting() : void {
             wto("startPrinting pending=" + this.pending.toString() + " alreadyPrinting=" + this.printing)
             if (!this.printing) {
+                wto("startPrinting calls printNext")
                 this.printNext()
             }
         }
@@ -235,31 +248,35 @@ namespace Terminal
             this.startPrinting()
         }
 
-        noecho(): void {
+        public noecho(): void {
             wto("--noecho")
             this.pending.push({kind: OutputType.NoEcho})
             this.startPrinting()
         }
 
-        println(text: string){
+        public println(text: string){
             wto("--println " + text)
             this.print(text)
             this.crlf()
             this.startPrinting()
         }
 
-        print(text: string){
+        public print(text: string){
             wto("--print " + text)
             this.pending.push({kind: OutputType.Print, text: text})
             this.startPrinting()
         }
 
-        crlf() {
+        public crlf() {
             wto("--crlf")
             this.pending.push({kind: OutputType.Crlf})
             this.startPrinting()
         }
 
+        public defer(action: () => void) {
+            wto("--defer")
+            this.pending.push({kind: OutputType.Defer, deferred: action})
+        }
         public flush() : void {
             // Empty the queue of any text we are printing
             this.pending = []
@@ -279,9 +296,10 @@ namespace Terminal
 
             if (text.length === 0) {
                 wto("playText empty string")
-                 setTimeout(() => this.printNext())
+                 setTimeout(() => {wto("playText empty string timout calling printNext"); this.printNext()})
                  return
             }
+            wto("playText set printing=true")
             this.printing = true
             let printed = 0
 
@@ -299,6 +317,7 @@ namespace Terminal
                 this.sounds.playSound(sample, i/10.0, false, () => {
 
                     let ch = text.charAt(printed);
+                    wto("playSound for character='" + ch + "' code=" + text.charCodeAt(printed))
                     if (ch == '$') ch = 'l';
 
                     this.tty.value += ch;
@@ -310,7 +329,7 @@ namespace Terminal
                     // next
                     if (printed == text.length) {
                         wto("playSound finished")
-                        setTimeout(() => this.printNext())
+                        setTimeout(() => {wto("playSound timeout calling printNext"); this.printNext()})
                     }
                 })
             }
@@ -393,7 +412,14 @@ namespace Terminal
         }
 
         private generateEvent(event: Event) : void {
-            if (this.currentHandler !== undefined) {
+
+            // If the printer is currently printing, we should wait until
+            // it finishes so add this call as a deferred action
+            if (this.printer.isPrinting()) {
+                wto("Terminal.generateEvent deferred next with " + event.kind)
+                this.printer.defer(() => this.generateEvent(event))
+            }
+            else if (this.currentHandler !== undefined) {
                 wto("Terminal.generateEvent calls next with " + event.kind)
                 const result = this.currentHandler.next(event)
                 wto("Terminal.generateEvent received result done=" + result.done + " value=" + result.value)
