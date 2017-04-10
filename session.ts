@@ -85,32 +85,32 @@ namespace Session {
                 //
                 // The user name can be up to six characters.
                 if (event.text.startsWith("HELP")) {
-                    tty.println("HELP NOT YET AVAILABLE")
+                    session.println("HELP NOT YET AVAILABLE")
                 }
                 else {
                     // Parse the command with a regex
                     const re = new RegExp(/(HELLO|LOGIN|HEL)\s+([A-Z0-9]+)?(\.([A-Z0-9]+))?\s*(,\s*(\w+))?/)
                     const match = re.exec(event.text)
                     if (match === null) {
-                        tty.println("PLEASE LOG IN")
+                        session.println("PLEASE LOG IN")
                     }
                     else {
                         let [whole, command, user, group_subid, subid, group_password, password] = re.exec(event.text)
                         if (user === undefined) {
-                            tty.println("USER NAME MISSING")
+                            session.println("USER NAME MISSING")
                         }
                         else if (user.length > 6) {
-                            tty.println("USER NAME TOO LONG")
+                            session.println("USER NAME TOO LONG")
                         }
                         else {
                             while (password === undefined) {
                                 // On a real tty, we would do a cr to move to
                                 // the @s at the start of the line but we turn
                                 // off echoing instead
-                                tty.print("@@@@ PASSWORD?")
-                                tty.noecho()
+                                session.print("@@@@ PASSWORD?")
+                                session.noecho()
                                 const passwordLine = yield({busy: false})
-                                tty.echo()
+                                session.echo()
                                 if (passwordLine.kind === Terminal.EventKind.Line) {
                                     password = passwordLine.text
                                     wto("password='" + password + "'" )
@@ -119,11 +119,11 @@ namespace Session {
                                     // letting the user type over the @s,
                                     // we stopped the effect of their crlf
                                     // so imitate that now
-                                    tty.crlf()
+                                    session.crlf()
                                 }
                             }
                             if (!session.login(user, password)){
-                                tty.println("ILLEGAL ACCESS")
+                                session.println("ILLEGAL ACCESS")
                             }
                             else {
                                 tty.setPendingHandler(sessionGenerator(session, tty))
@@ -220,6 +220,8 @@ namespace Session {
         public println(line: string) : void { this.terminal.println(line) }
         public print(line: string) : void { this.terminal.print(line) }
         public crlf() : void { this.terminal.crlf() }
+        public echo() : void { this.terminal.echo() }
+        public noecho() : void { this.terminal.noecho() }
 
         protected commandContext: Context
 

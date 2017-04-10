@@ -171,7 +171,6 @@ namespace Terminal
             // We're not currently printing anything
             this.printing = false
             this.pending = []
-            wto("ctor pending=" + this.pending.toString())
         }
 
         public clear() : void {
@@ -179,36 +178,55 @@ namespace Terminal
             this.tty.scrollTop = this.tty.scrollHeight;
         }
 
+        public dumpQueue() : void {
+            wto("printer: printing=" + this.printing + " echo=" + this.getEcho() + " queue length:" + this.pending.length)
+            for (const o of this.pending) {
+                switch (o.kind) {
+                    case OutputType.Echo:   wto("    ECHO");                    break
+                    case OutputType.NoEcho: wto("    NOECHO");                  break
+                    case OutputType.Crlf:   wto("    CRLF");                    break
+                    case OutputType.Defer:  wto("    DEFER");                   break
+                    case OutputType.Print:  wto("    PRINT '" + o.text + "'");  break
+                }
+            }
+        }
+
         protected printNext() : void {
+
             wto("printNext pending=" + this.pending.toString() + " echo=" + this.getEcho())
-            while (this.pending.length > 0) {
+
+            // If there are still elements in the queue we are printing
+            // and we can dispatch the next item
+            if (this.pending.length > 0) {
+
+                this.printing = true
                 const item: Output = this.pending.shift()
                 if (item.kind === OutputType.Echo) {
                     wto("printNext dequeue ECHO")
                     this.setEcho(true)
+                    setTimeout(() => {wto("Echo timeout"); this.printNext()})
                 }
                 else if (item.kind === OutputType.NoEcho) {
                     wto("printNext dequeue NOECHO")
                     this.setEcho(false)
+                    setTimeout(() => {wto("NoEcho timeout"); this.printNext()})
                 }
                 else if (item.kind === OutputType.Crlf) {
                     wto("printNext dequeue CRLF echo=" + this.getEcho() + " and return")
                     if (this.getEcho()) {
                         this.playText("\n")
-
-                        // Stop dequeueing elements until the current one
-                        // completes - it will call printNext again.
-                        return
+                    }
+                    else {
+                        setTimeout(() => {wto("CRLF with noecho timeout"); this.printNext()})
                     }
                 }
                 else if (item.kind == OutputType.Print) {
                    wto("printNext dequeue PRINT '" + item.text + "' echo=" + this.getEcho() + " and return")
                     if (this.getEcho()) {
                         this.playText(item.text);
-
-                        // Stop dequeueing elements until the current one
-                        // completes - it will call printNext again.
-                        return
+                    }
+                    else {
+                        setTimeout(() => {wto("PRINT with noecho timeout"); this.printNext()})
                     }
                 }
                 else {
@@ -225,12 +243,14 @@ namespace Terminal
                     }
                 }
             }
+            else {
+                this.printing = false
+            }
 
-            wto("printNext: finished printing set printing=false")
-            this.printing = false
+            wto("printNext: dispatched item echo=" + this.getEcho() + " printing=" + this.printing)
         }
 
-        protected startPrinting() : void {
+        public startPrinting() : void {
             wto("startPrinting pending=" + this.pending.toString() + " alreadyPrinting=" + this.printing)
             if (!this.printing) {
                 wto("startPrinting calls printNext")
@@ -245,38 +265,34 @@ namespace Terminal
         public echo(): void {
             wto("--echo")
             this.pending.push({kind: OutputType.Echo})
-            this.startPrinting()
         }
 
         public noecho(): void {
             wto("--noecho")
             this.pending.push({kind: OutputType.NoEcho})
-            this.startPrinting()
         }
 
         public println(text: string){
             wto("--println " + text)
             this.print(text)
             this.crlf()
-            this.startPrinting()
         }
 
         public print(text: string){
             wto("--print " + text)
             this.pending.push({kind: OutputType.Print, text: text})
-            this.startPrinting()
         }
 
         public crlf() {
             wto("--crlf")
             this.pending.push({kind: OutputType.Crlf})
-            this.startPrinting()
         }
 
         public defer(action: () => void) {
             wto("--defer")
             this.pending.push({kind: OutputType.Defer, deferred: action})
         }
+
         public flush() : void {
             // Empty the queue of any text we are printing
             this.pending = []
@@ -299,8 +315,6 @@ namespace Terminal
                  setTimeout(() => {wto("playText empty string timout calling printNext"); this.printNext()})
                  return
             }
-            wto("playText set printing=true")
-            this.printing = true
             let printed = 0
 
             // If we have more than one character, play the carriage motion
@@ -337,8 +351,10 @@ namespace Terminal
 
         public key(ch: string) {
             this.sounds.playSound('keyclick', 0, false, null)
-            this.tty.value += ch;
-            this.tty.scrollTop = this.tty.scrollHeight;
+            if (this.getEcho()) {
+                this.tty.value += ch;
+                this.tty.scrollTop = this.tty.scrollHeight;
+            }
         }
     }
 
@@ -413,15 +429,18 @@ namespace Terminal
 
         private generateEvent(event: Event) : void {
 
-            // If the printer is currently printing, we should wait until
-            // it finishes so add this call as a deferred action
             if (this.printer.isPrinting()) {
+                // The printer is currently printing, we should wait until
+                // it finishes so add this call as a deferred action
                 wto("Terminal.generateEvent deferred next with " + event.kind)
                 this.printer.defer(() => this.generateEvent(event))
             }
             else if (this.currentHandler !== undefined) {
-                wto("Terminal.generateEvent calls next with " + event.kind)
+
+                // Nothing is printing. Tick the current handler now
+                wto("Terminal.generateEvent nothing printing so call next with " + event.kind)
                 const result = this.currentHandler.next(event)
+
                 wto("Terminal.generateEvent received result done=" + result.done + " value=" + result.value)
                 this.processHandlerResult(result.value)
 
@@ -433,6 +452,12 @@ namespace Terminal
                         this.setHandler(nextHandler)
                     }
                 }
+
+                // The handler may have generated some output so start printing
+                // anything that may be queued
+                wto("Terminal.generateEvent finished next so start printing anything generated")
+                this.printer.dumpQueue()
+                this.printer.startPrinting()
             }
         }
 
@@ -544,11 +569,11 @@ namespace Terminal
         }
 
         public echo() {
-            this.printer.setEcho(true)
+            this.printer.echo()
         }
 
         public noecho() {
-            this.printer.setEcho(false)
+            this.printer.noecho()
         }
     }
 }
