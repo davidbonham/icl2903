@@ -198,7 +198,7 @@ class FileStore
 
         }
 
-        ourRequest.open('POST', 'http://' + window.location.host + '/cgi-bin/server.py', true);
+        ourRequest.open('POST', '/cgi-bin/server.py', true);
         ourRequest.setRequestHeader("Content-Type", "text/plain;charset=UTF-8");
         ourRequest.send(message);
     }
