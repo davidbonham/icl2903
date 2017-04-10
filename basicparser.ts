@@ -156,13 +156,21 @@ class BasicParser
         else if (scanner.consumeCommand("CAT")) {
             return this.eoc(scanner, CatalogueCmd.parse(scanner, false));
         }
-        else if (scanner.consumeCommand("LIB"))
-        {
+        else if (scanner.consumeCommand("LIB")) {
             return this.eoc(scanner, CatalogueCmd.parse(scanner, true));
+        }
+        else if (scanner.consumeCommand("LIS")) {
+            return this.eoc(scanner, ListCmd.parse(scanner));
+        }
+        else if (scanner.consumeCommand("PUN")) {
+            return this.eoc(scanner, ListCmd.parse(scanner));
         }
         else if (scanner.consumeCommand("RUN"))
         {
             return this.eoc(scanner, RunCmd.parse(scanner));
+        }
+        else if (scanner.consumeCommand("XPU")) {
+            return this.eoc(scanner, ListCmd.parse(scanner));
         }
 
 
@@ -202,12 +210,6 @@ class BasicParser
         else if (scanner.consume_command("LEN"))
         {
             return eoc(scanner, LengthCmd.parse(scanner));
-        }
-        else if (scanner.consume_command("LIS")
-                || scanner.consume_command("PUN")
-                || scanner.consume_command("XPU"))
-        {
-            return eoc(scanner, ListCmd.parse(scanner));
         }
         else if (scanner.consume_command("MES")
                 || scanner.consume_command("MESSAGE"))

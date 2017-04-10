@@ -21,9 +21,22 @@ class Program {
     // Is the program in a state where it can be continued?
     protected continuable : boolean
 
+    protected name_: string
+    public get name() { return this.name_ }
+
     constructor(protected readonly session: Session.Session) {
         this.contents = []
         this.continuable = false
+        this.name_ = undefined
+    }
+
+    public dump() {
+        wto("program name=" + this.name_ + " continuable=" + this.continuable + " contents size=" + this.statementCount())
+        this.contents.forEach(
+            (statement: Statement, index: number) => {
+                wto("index=" + index + " statement='" + statement.source() + "'")
+            }
+        )
     }
 
     public get state()  { return this.state_}
@@ -46,6 +59,26 @@ class Program {
         return count
     }
 
+    public lines(from: number, to: number) : Statement[] {
+
+        // Convert line numbers to indices
+        const low = from*100
+        const high = to*100
+
+        // Return statements in the range ignoring statement sequence
+        // expansions. Convert indices to line numbers
+        let result : Statement[] = []
+        this.contents.forEach(
+            (statement : Statement, index: number) => {
+                if (low <= index && index <= high && (index % 100) == 0) {
+                    result[index/100] = statement
+                }
+            }
+        )
+
+        return result
+    }
+
     public add(lineNo: number, statement: Statement) : void {
 
         // We've changed the program so it needs to be run again before it
@@ -57,15 +90,14 @@ class Program {
 
         // Simple statements can be inserted immediately but sequences must
         // be expanded
+        this.contents[lineNo*100] = statement
+
         if (statement instanceof SequenceStmt) {
-            let offset = 0
-            for (let node : SequenceStmt = statement; node != null; node = node.next) {
+            let offset = 1
+            for (let node : SequenceStmt = statement.next; node != null; node = node.next) {
                 this.contents[lineNo*100+offset] = node.statement
                 offset++
             }
-        }
-        else {
-            this.contents[lineNo*100] = statement
         }
     }
 
@@ -81,7 +113,15 @@ class Program {
         const high = to*100 + 99
 
         // Keep lines not in that range
-        this.contents = this.contents.filter((stmt, index) => index < low || high < index)
+        let result : Statement[] = []
+        this.contents.forEach(
+            (statement, index) => {
+                if (index < low || high < index) {
+                    result[index] = statement
+                }
+            }
+        )
+        this.contents = result
     }
 
     public run(line: number, context: Context, run: boolean) : void {
