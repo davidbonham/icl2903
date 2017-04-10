@@ -80,8 +80,9 @@ fs_handlers = {
 }
 
 served = {
-    '/index.html'     : ('text/html', 'index.html'),
-    '/tstut.css'      : ('text/css', 'tstut.css'),
+    '/index.html'           : ('text/html', 'index.html'),
+    '/tstut.css'            : ('text/css',  'tstut.css'),
+    '/lightpaperfibers.png' : ('image/png', 'lightpaperfibers.png'),
 
     '/tty.mp3'        : ('audio/mpeg',  'tty.mp3'),
     '/ttykey.wav'     : ('audio/x-wav', 'ttykey.wav'),

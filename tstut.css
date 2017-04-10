@@ -4,13 +4,19 @@
 }
 
 textarea {
-    font-family: 'TeleType', 'Courier', serif;
-    background: #fffff8
+  font-family: 'TeleType', 'Courier', serif;
+  background: #fffff8;
 }
 
 #ttydiv {
   margin: 20px;
   float: left;
+}
+
+#ttytext {
+  /* Background pattern from Subtle Patterns */
+  background-image: url(lightpaperfibers.png);
+  background-attachment: local;
 }
 
 #fsdiv {
@@ -19,7 +25,6 @@ textarea {
 }
 
 h1 {
-
   font-size: 150%;
   font-family: "Lucida Console"
 }
