@@ -28,8 +28,6 @@ function main() {
     wto("exit main")
 }
 
-main()
-
 function wto(message: string) : void {
     const now = new Date();
     const time = now.getMinutes().toString() + ":" + now.getSeconds() + "." + now.getMilliseconds();

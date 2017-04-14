@@ -108,6 +108,8 @@ served = {
     '/session.js'     : ('application/javascript', 'session.js'),
     '/utility.js'     : ('application/javascript', 'utility.js'),
     '/main.js'        : ('application/javascript', 'main.js'),
+    '/icl2903.js'     : ('application/javascript', 'icl2903.js'),
+
 
     '/unittest.html'       : ('text/html', 'unittest.html'),
     '/filestore.spec.js'   : ('application/javascript', 'filestore.spec.js'),

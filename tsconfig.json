@@ -5,6 +5,7 @@
         "noImplicitThis": true,
         "alwaysStrict": true,
         "target": "es2015",
+        "outDir": "build",
         "module": "commonjs",
         "typeRoots": [ "node_modules/@types/" ],
         "types": [ "jasmine" ]
