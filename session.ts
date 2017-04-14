@@ -280,6 +280,7 @@ namespace Session {
             // an error code or null indicating no content
             const parser = new BasicParser
             const node = parser.parse(command)
+            wto("node=" + node)
             if (node instanceof Command) {
 
                 // ? is a special case because the session has the

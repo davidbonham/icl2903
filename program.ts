@@ -1,3 +1,4 @@
+/// <reference path="channel.ts" />
 
 enum  ProgramState {Stopped, Interrupted, Input, Running}
 class Program {
@@ -21,13 +22,19 @@ class Program {
     // Is the program in a state where it can be continued?
     protected continuable : boolean
 
+    // The name of the program, set by NAME, GET commands &c
     protected name_: string
     public get name() { return this.name_ }
+
+    // The I/O channels as seen by this program. Channel 0 is the tty
+    protected _channels: Channels
+    public get channels() { return this._channels; }
 
     constructor(protected readonly session: Session.Session) {
         this.contents = []
         this.continuable = false
         this.name_ = undefined
+        this._channels = new Channels
     }
 
     public dump() {

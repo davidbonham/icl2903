@@ -96,7 +96,9 @@ served = {
     '/teletype.ttf'   : ('application/x-font-truetype', 'teletype.ttf'),
 
     '/ast.js'         : ('application/javascript', 'ast.js'),
+    '/bif.js'         : ('application/javascript', 'bif.js'),
     '/basicparser.js' : ('application/javascript', 'basicparser.js'),
+    '/channel.js'     : ('application/javascript', 'channel.js'),
     '/context.js'     : ('application/javascript', 'context.js'),
     '/terminal.js'    : ('application/javascript', 'terminal.js'),
     '/errorcode.js'   : ('application/javascript', 'errorcode.js'),
@@ -107,10 +109,12 @@ served = {
     '/utility.js'     : ('application/javascript', 'utility.js'),
     '/main.js'        : ('application/javascript', 'main.js'),
 
-    '/unittest.html'       : ('text/html', 'test/unittest.html'),
-    '/filestore.spec.js'   : ('application/javascript', 'test/filestore.spec.js'),
-    '/scanner.spec.js'     : ('application/javascript', 'test/scanner.spec.js'),
-    '/basicparser.spec.js' : ('application/javascript', 'test/basicparser.spec.js'),
+    '/unittest.html'       : ('text/html', 'unittest.html'),
+    '/filestore.spec.js'   : ('application/javascript', 'filestore.spec.js'),
+    '/bif.spec.js'         : ('application/javascript', 'bif.spec.js'),
+    '/scanner.spec.js'     : ('application/javascript', 'scanner.spec.js'),
+    '/utility.spec.js'     : ('application/javascript', 'utility.spec.js'),
+    '/basicparser.spec.js' : ('application/javascript', 'basicparser.spec.js'),
 }
 
 # Map from session id to its queue

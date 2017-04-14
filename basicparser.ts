@@ -61,6 +61,7 @@ class BasicParser
 
     public parseStatement(scanner: Scanner) : Statement | undefined {
         return EndStmt.parse(scanner)
+            || PrintStmt.parse(scanner)
         /*
         return ChangeStmt.parseChange(scanner, out statement)
             || DataStmt.parseData(scanner, out statement)
@@ -80,7 +81,6 @@ class BasicParser
             || OnGosubStmt.parseOnGosub(scanner, out statement)
             || OnGotoStmt.parseOnGoto(scanner, out statement)
             || OnThenStmt.parseOnThen(scanner, out statement)
-            || PrintStmt.parsePrint(scanner, out statement)
             || NLetStmt.parseNLet(false, scanner, out statement)
             || SLetStmt.parseSLet(false, scanner, out statement)
             || RandomiseStmt.parseRandomise(scanner, out statement)

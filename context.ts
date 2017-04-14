@@ -1,9 +1,11 @@
 class Context {
 
-    public constructor(protected parent: Context, protected program: Program) {
+    public constructor(protected _parent: Context, protected _owner: Program) {
     }
 
+    public get owner() : Program { return this._owner; }
+
     public terminate() : void {
-        this.program.terminate()
+        this.owner.terminate()
     }
 }
