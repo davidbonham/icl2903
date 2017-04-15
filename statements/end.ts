@@ -2,11 +2,15 @@
 
 class EndStmt extends Statement {
 
+    public constructor() {
+        super()
+    }
+
     public isImmediateStatement() : boolean {
         return false;
     }
 
-    public static parse(scanner: Scanner) : Statement {
+    public static parse(scanner: Scanner) : EndStmt {
         return scanner.consumeKeyword("END") ? new EndStmt : null
     }
 
