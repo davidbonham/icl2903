@@ -113,6 +113,7 @@ served = {
 
     '/unittest.html'       : ('text/html', 'unittest.html'),
     '/filestore.spec.js'   : ('application/javascript', 'filestore.spec.js'),
+    '/numeric.spec.js'     : ('application/javascript', 'numeric.spec.js'),
     '/bif.spec.js'         : ('application/javascript', 'bif.spec.js'),
     '/scanner.spec.js'     : ('application/javascript', 'scanner.spec.js'),
     '/utility.spec.js'     : ('application/javascript', 'utility.spec.js'),
