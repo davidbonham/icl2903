@@ -26,6 +26,9 @@ namespace BIF {
             // 1000000 or greater, we switch to exponential format. By
             // observation, values less that 0.1 are displayed in exponention
             // format too. So: 1E6, 100000, 10000 1000 100 10 1 .1 1E-2 ...
+            //
+            // Unlike the PRINT statement, we don't generate a leading space
+            // for positive values - so "-4" but "4"
 
             // Get the initial text form
             const hasExponent = Math.abs(n) < 0.1 || 1000000 <= Math.abs(n)
@@ -46,9 +49,6 @@ namespace BIF {
                 exponent = exponent.replace("+", "");
             }
 
-            // If the number has no leading -, use a space
-            if (n >= 0) number = " " + number
-
             // If the number starts 0. or -0., remove the leading zero
             number = number.replace(/([ -])0\./, '$1.')
             console.log("removed leading zeros=" + number);
@@ -61,8 +61,9 @@ namespace BIF {
             // If the number ends with a ., remove it
             if (number.endsWith(".")) number = number.slice(0,-1)
             console.log("removed leading .=" + number)
+
             // If we have removed everything, then we must be zero
-            if (number == " ") number = " 0";
+            if (number == " ") number = "0";
             console.log("handled empty result=" + number)
 
             return hasExponent ? number + "E" + exponent : number
