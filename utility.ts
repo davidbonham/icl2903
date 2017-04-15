@@ -35,7 +35,7 @@ namespace Utility {
     }
 
     export class RunTimeError {
-        constructor(public readonly error: string){}
+        constructor(public readonly error: string, public readonly line?: number){}
     }
 
     export type Characteristics = {
