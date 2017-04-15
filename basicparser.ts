@@ -96,6 +96,7 @@ class BasicParser
         // We must have at least one statement next. If we fail, then
         // return its syntax error
         const statement = this.parseStatement(scanner)
+        console.log("parseStatementSequence source=" + statement.source() + " isend=" + (statement instanceof EndStmt))
         if (statement == undefined) {
 
             this.error.set(ErrorCode.StatementNotRecognised)
@@ -162,6 +163,9 @@ class BasicParser
         else if (scanner.consumeCommand("LIS")) {
             return this.eoc(scanner, ListCmd.parse(scanner));
         }
+        else if (scanner.consumeCommand("NAM")) {
+            return this.eoc(scanner, NameCmd.parse(scanner));
+        }
         else if (scanner.consumeCommand("PUN")) {
             return this.eoc(scanner, ListCmd.parse(scanner));
         }
@@ -215,10 +219,6 @@ class BasicParser
                 || scanner.consume_command("MESSAGE"))
         {
             return eoc(scanner, MessageCmd.parse(scanner));
-        }
-        else if (scanner.consume_command("NAM"))
-        {
-            return eoc(scanner, NameCmd.parse(scanner));
         }
         else if (scanner.consume_command("RES")
                 || scanner.consume_command("REN"))

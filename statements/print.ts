@@ -73,8 +73,6 @@ class PrintS extends PrintItem {
     public render(channel: TerminalChannel, context: Context) {
         channel.text(this.value.value(context));
     }
-
-
 }
 
 class PrintStmt extends Statement {
@@ -85,7 +83,7 @@ class PrintStmt extends Statement {
         super()
     }
 
-    public static parse(scanner: Scanner) : Statement {
+    public static parse(scanner: Scanner) : PrintStmt {
 
         const mark = scanner.mark();
         if (!scanner.consumeKeyword("PRINT")) return null
@@ -102,7 +100,7 @@ class PrintStmt extends Statement {
                 channel = nexpr;
             }
             else {
-                return <Statement>this.fail(scanner, ErrorCode.StatementNotRecognised, mark);
+                return <PrintStmt>this.fail(scanner, ErrorCode.StatementNotRecognised, mark);
             }
         }
 
@@ -115,7 +113,7 @@ class PrintStmt extends Statement {
                 using_expr = sexpr;
             }
             else {
-                return <Statement>this.fail(scanner, ErrorCode.StatementNotRecognised, mark);
+                return <PrintStmt>this.fail(scanner, ErrorCode.StatementNotRecognised, mark);
             }
         }
 
@@ -137,7 +135,7 @@ class PrintStmt extends Statement {
             }
             else if (separator_required) {
                 // Non-separators must not appear consecutively
-                return <Statement>this.fail(scanner, ErrorCode.StatementNotRecognised, mark);
+                return <PrintStmt>this.fail(scanner, ErrorCode.StatementNotRecognised, mark);
             }
             else
             {
@@ -151,12 +149,12 @@ class PrintStmt extends Statement {
                 {
                     // Parse rest of TAB(nexpr)
                     if (!scanner.consumeSymbol(TokenType.PAR)) {
-                        return <Statement>this.fail(scanner, ErrorCode.StatementNotRecognised, mark)
+                        return <PrintStmt>this.fail(scanner, ErrorCode.StatementNotRecognised, mark)
                     }
 
                     const nexpr = NumericExpression.parse(scanner)
                     if (!nexpr || !scanner.consumeSymbol(TokenType.REN)) {
-                        return <Statement>this.fail(scanner, ErrorCode.StatementNotRecognised, mark);
+                        return <PrintStmt>this.fail(scanner, ErrorCode.StatementNotRecognised, mark);
                     }
 
                     node = new PrintTab(nexpr);
@@ -173,7 +171,7 @@ class PrintStmt extends Statement {
                             node = new PrintS(sexpr);
                         }
                         else {
-                            return <Statement>this.fail(scanner, ErrorCode.StatementNotRecognised, mark);
+                            return <PrintStmt>this.fail(scanner, ErrorCode.StatementNotRecognised, mark);
                         }
                     }
                 }
@@ -203,7 +201,7 @@ class PrintStmt extends Statement {
 
         const tty = <TerminalChannel>context.owner.channels.get(channel_number);
 
-        tty.begin();
+        tty.begin()
 
         // Set up the format strings for this print statement, if there are any
         if (this.using != null) {

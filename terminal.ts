@@ -82,7 +82,8 @@ namespace Terminal
     // is not to be invoked again until output is complete.
     export enum OutputType {Echo, NoEcho, Print, Crlf, Defer}
     export type Output = {kind : OutputType; text?: string; deferred?: () => void}
-    export type HandlerResult = {busy: boolean; output?: Output[]}
+    export enum State {Asleep, Waiting, Running}
+    export type HandlerResult = {state: State; output?: Output[]}
 
     class Keyboard {
 
@@ -193,8 +194,6 @@ namespace Terminal
 
         protected printNext() : void {
 
-            wto("printNext pending=" + this.pending.toString() + " echo=" + this.getEcho())
-
             // If there are still elements in the queue we are printing
             // and we can dispatch the next item
             if (this.pending.length > 0) {
@@ -202,36 +201,31 @@ namespace Terminal
                 this.printing = true
                 const item: Output = this.pending.shift()
                 if (item.kind === OutputType.Echo) {
-                    wto("printNext dequeue ECHO")
                     this.setEcho(true)
-                    setTimeout(() => {wto("Echo timeout"); this.printNext()})
+                    setTimeout(() => {this.printNext()})
                 }
                 else if (item.kind === OutputType.NoEcho) {
-                    wto("printNext dequeue NOECHO")
                     this.setEcho(false)
-                    setTimeout(() => {wto("NoEcho timeout"); this.printNext()})
+                    setTimeout(() => {this.printNext()})
                 }
                 else if (item.kind === OutputType.Crlf) {
-                    wto("printNext dequeue CRLF echo=" + this.getEcho() + " and return")
                     if (this.getEcho()) {
                         this.playText("\n")
                     }
                     else {
-                        setTimeout(() => {wto("CRLF with noecho timeout"); this.printNext()})
+                        setTimeout(() => {this.printNext()})
                     }
                 }
                 else if (item.kind == OutputType.Print) {
-                   wto("printNext dequeue PRINT '" + item.text + "' echo=" + this.getEcho() + " and return")
                     if (this.getEcho()) {
                         this.playText(item.text);
                     }
                     else {
-                        setTimeout(() => {wto("PRINT with noecho timeout"); this.printNext()})
+                        setTimeout(() => {this.printNext()})
                     }
                 }
                 else {
                     // Deferred. This should be the final item in the list
-                    wto("printNext dequeue DEFER echo=" + this.getEcho())
                     if (this.pending.length > 0) {
                         wto("ERROR deferred item is not the last in the queue - ignored")
                     }
@@ -246,14 +240,10 @@ namespace Terminal
             else {
                 this.printing = false
             }
-
-            wto("printNext: dispatched item echo=" + this.getEcho() + " printing=" + this.printing)
         }
 
         public startPrinting() : void {
-            wto("startPrinting pending=" + this.pending.toString() + " alreadyPrinting=" + this.printing)
             if (!this.printing) {
-                wto("startPrinting calls printNext")
                 this.printNext()
             }
         }
@@ -263,33 +253,27 @@ namespace Terminal
         }
 
         public echo(): void {
-            wto("--echo")
             this.pending.push({kind: OutputType.Echo})
         }
 
         public noecho(): void {
-            wto("--noecho")
             this.pending.push({kind: OutputType.NoEcho})
         }
 
         public println(text: string){
-            wto("--println " + text)
             this.print(text)
             this.crlf()
         }
 
         public print(text: string){
-            wto("--print " + text)
             this.pending.push({kind: OutputType.Print, text: text})
         }
 
         public crlf() {
-            wto("--crlf")
             this.pending.push({kind: OutputType.Crlf})
         }
 
         public defer(action: () => void) {
-            wto("--defer")
             this.pending.push({kind: OutputType.Defer, deferred: action})
         }
 
@@ -308,11 +292,9 @@ namespace Terminal
         public playText(text: string) : void {
 
             const duration = text.length * 0.1;
-            wto("playText '" + text + "' duration " + duration)
 
             if (text.length === 0) {
-                wto("playText empty string")
-                 setTimeout(() => {wto("playText empty string timout calling printNext"); this.printNext()})
+                 setTimeout(() => {this.printNext()})
                  return
             }
             let printed = 0
@@ -331,7 +313,6 @@ namespace Terminal
                 this.sounds.playSound(sample, i/10.0, false, () => {
 
                     let ch = text.charAt(printed);
-                    wto("playSound for character='" + ch + "' code=" + text.charCodeAt(printed))
                     if (ch == '$') ch = 'l';
 
                     this.tty.value += ch;
@@ -342,8 +323,7 @@ namespace Terminal
                     // and there is another element, set a timer to start the
                     // next
                     if (printed == text.length) {
-                        wto("playSound finished")
-                        setTimeout(() => {wto("playSound timeout calling printNext"); this.printNext()})
+                        setTimeout(() => {this.printNext()})
                     }
                 })
             }
@@ -396,9 +376,7 @@ namespace Terminal
                 this.resetButton.onclick = () => this.reset();
 
                 this.reset();
-                this.busy = false;
                 this.updateUI();
-
             }
             else {
                 throw "DOM element with id " + id + " is not an HTMLTextAreaElement";
@@ -406,14 +384,15 @@ namespace Terminal
         }
 
         private updateUI() : void {
-            this.busyRadio.checked = this.busy;
+            this.busyRadio.checked = this.state != State.Waiting;
             this.echoRadio.checked = this.printer.getEcho();
             this.debug = this.debugToggle.checked
         }
 
         private reset() : void {
             this.lineBuffer = ""
-            this.busy = true
+            this.state = State.Asleep
+            this.tickSession = false
             this.printer.echo()
             this.printer.clear()
             this.printer.flush()
@@ -423,8 +402,13 @@ namespace Terminal
 
         private processHandlerResult(result : HandlerResult) : void {
 
-            this.busy = result.busy
+            this.state = result.state
             this.updateUI()
+
+            // If the session is busy, the only events it expects are
+            // interrupts and None events that tick the program. Set up
+            // a time to generate the tick
+            if (this.state == State.Running) setTimeout(()=>this.generateEvent({kind: EventKind.None}), 1000)
         }
 
         private generateEvent(event: Event) : void {
@@ -463,15 +447,15 @@ namespace Terminal
 
         public addCharacter(character: string, isInterrupt: boolean = false) {
 
-            console.log("addCharacter '" + character +
-                        "' code=" + character.charCodeAt(0) +
-                        " isInterrupt=" + isInterrupt +
-                        "busy=" + this.busy +
-                        "printing=" + this.printer.isPrinting());
+            //console.log("addCharacter '" + character +
+            //            "' code=" + character.charCodeAt(0) +
+            //            " isInterrupt=" + isInterrupt +
+            //            " state=" + State[this.state] +
+            //            " printing=" + this.printer.isPrinting());
 
             if (isInterrupt) {
 
-                if (this.busy) {
+                if (this.state != State.Waiting) {
                     // Flush the output generated so far and pass the interrupt
                     // to the session to generate BREAK IN or LINE nnnn BREAK
                     // IN as appropriate
@@ -498,7 +482,7 @@ namespace Terminal
                     }
                 }
             }
-            else if (!this.busy && !this.printer.isPrinting()) {
+            else if (this.state == State.Waiting && !this.printer.isPrinting()) {
 
                 if (character === "\b") {
                     // Erase the last character and display the back-arrow rubout
@@ -527,8 +511,9 @@ namespace Terminal
 
         // Is the session busy? If so, keyboard input is not being accepted
         // unless it is an interrupt.
-        private busy : boolean;
+        private state : State;
         public debug : boolean;
+        private tickSession : boolean
 
         private keyboard   : Keyboard
         public  printer    : Printer
@@ -549,7 +534,7 @@ namespace Terminal
             wto("Terminal.setHandler priming handler")
             const result = this.currentHandler.next({kind: EventKind.None})
             this.processHandlerResult(result.value)
-            wto("Terminal.setHandler received busy=" + this.busy)
+            wto("Terminal.setHandler received state=" + State[this.state])
         }
 
         public setPendingHandler(handler: IterableIterator<HandlerResult>) {

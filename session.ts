@@ -28,7 +28,7 @@ namespace Session {
         for (;;)
         {
             wto("asleepGenerator yielding to receive ctrl-a as busy")
-            const ctrla : Terminal.Event = yield ({busy: true})
+            const ctrla : Terminal.Event = yield ({state: Terminal.State.Asleep})
             wto("asleepGenerator received event " + ctrla.kind)
             if (ctrla.kind == Terminal.EventKind.Interrupt && ctrla.interrupt == 'A')
             {
@@ -74,7 +74,7 @@ namespace Session {
         for (;;)
         {
             wto("loginGenerator yielding idle for command line")
-            const event = yield({busy: false})
+            const event = yield({state: Terminal.State.Waiting})
 
             if (event.kind == Terminal.EventKind.Line) {
                 wto("loginGenerator received event '" + event.text + "'")
@@ -109,7 +109,7 @@ namespace Session {
                                 // off echoing instead
                                 session.print("@@@@ PASSWORD?")
                                 session.noecho()
-                                const passwordLine = yield({busy: false})
+                                const passwordLine = yield({state: Terminal.State.Waiting})
                                 session.echo()
                                 if (passwordLine.kind === Terminal.EventKind.Line) {
                                     password = passwordLine.text
@@ -150,17 +150,19 @@ namespace Session {
             switch (session.program.state) {
 
                 case ProgramState.Running: {
+                    wto("program is running")
                     // If the program is running but not awaiting user input, the
                     // user should be unable to type and all we expect from them
                     // is an interrupt
-                    const event : Terminal.Event = yield({busy:true})
+                    const event : Terminal.Event = yield({state: Terminal.State.Running})
+                    wto("yield returned event kind ")
                     switch (event.kind) {
 
                         case Terminal.EventKind.Interrupt:
                             session.program.breakIn()
                             break
                         case Terminal.EventKind.None:
-                            session.program.step()
+                            session.program.step(session.commandContext)
                             break
                         default:
                             throw "unexpect event type " + event.kind + " while running"
@@ -172,7 +174,7 @@ namespace Session {
                     // If the program is running but waiting for input, the
                     // user can interrupt or supply a line of input. We are
                     // not busy, the user can type.
-                    const event : Terminal.Event = yield({busy:false})
+                    const event : Terminal.Event = yield({state: Terminal.State.Waiting})
                     switch (event.kind) {
 
                         case Terminal.EventKind.Interrupt:
@@ -191,7 +193,7 @@ namespace Session {
 
                     // If the program is stopped or interrupted, the user can
                     // provide input for us to process
-                    const event : Terminal.Event = yield({busy:false})
+                    const event : Terminal.Event = yield({state: Terminal.State.Waiting})
                     if (event.kind == Terminal.EventKind.Line) {
                         carryOn = session.perform(event.text)
                     }
@@ -223,7 +225,7 @@ namespace Session {
         public echo() : void { this.terminal.echo() }
         public noecho() : void { this.terminal.noecho() }
 
-        protected commandContext: Context
+        public commandContext: Context
 
         public get program() { return this.program_ }
 

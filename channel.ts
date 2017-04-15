@@ -34,7 +34,8 @@ abstract class TerminalChannel extends Channel
     protected _margin : number
     protected  _buffer : string;
 
-    public TerminalChannel() {
+    public constructor() {
+        super()
         this._offset = 0;
         this._margin = 72;
         this._nlPending = false;
@@ -147,12 +148,10 @@ abstract class TerminalChannel extends Channel
             formatted = Utility.formatNumber(c, value)
         }
         else {
-
             // Numbers are printed with a leading - or space and a trailing space. The
             // space after the % handles the former, the trailing one the latter.
             formatted = (value < 0 ? "" : " ") + BIF.str$.call(value) + ' ';
         }
-
         this.writes(formatted);
         this._nlPending = true;
     }
@@ -336,6 +335,29 @@ abstract class TerminalChannel extends Channel
     protected abstract terminal_close() : void
 
 }
+
+class TTYChannel extends TerminalChannel {
+
+    public constructor(protected readonly session: Session.Session) {
+       super()
+    }
+
+    protected flush(buffer: string) : void {
+        this.session.print(buffer);
+    }
+
+    protected get_line() : string {
+        throw new Utility.RunTimeError(ErrorCode.BugCheck)
+    }
+
+    public interrupt() : boolean {
+        throw new Utility.RunTimeError(ErrorCode.BugCheck)
+    }
+
+    protected terminal_close() : void {
+    }
+}
+
 
 enum Access { READ, WRITE, INPUT, PRINT, CLOSE }
 
