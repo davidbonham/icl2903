@@ -28,7 +28,7 @@ describe("strS", () => {
 
     it("trims leading zero on positive", () => expect(
         BIF.str$.call(0.1)
-    ).toBe(" .1"))
+    ).toBe(".1"))
 
     it("trims leading zero on negative", () => expect(
         BIF.str$.call(-0.1)
@@ -36,11 +36,11 @@ describe("strS", () => {
 
     it("trims leading dp on integer", () => expect(
         BIF.str$.call(123)
-    ).toBe(" 123"))
+    ).toBe("123"))
 
     it("has no more than six digits", () => expect(
         BIF.str$.call(2/3)
-    ).toBe(" .666667"))
+    ).toBe(".666667"))
 
     it("has no more than six digits", () => expect(
         BIF.str$.call(-2/3)
@@ -48,7 +48,7 @@ describe("strS", () => {
 
     it("has no more than six digits with exponent", () => expect(
         BIF.str$.call(20000000/3)
-    ).toBe(" 6.66667E6"))
+    ).toBe("6.66667E6"))
 
     it("has no more than six digits with exponent", () => expect(
         BIF.str$.call(-20000000/3)

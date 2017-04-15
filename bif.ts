@@ -50,8 +50,8 @@ namespace BIF {
             }
 
             // If the number starts 0. or -0., remove the leading zero
-            number = number.replace(/([ -])0\./, '$1.')
-            console.log("removed leading zeros=" + number);
+            number = number.replace(/^(\-?)0\./, '$1.')
+            console.log("removed leading zero=" + number);
 
             // If the number contains digits after the decimal point,
             // remove any trailing zeros
