@@ -7,7 +7,7 @@ abstract class StringExpression extends Expression {
         return SLiteral.parseLiteral(scanner)
         ||     SBracket.parseBracket(scanner)
         ||     SFunction.parseFunction(scanner)
-        //||     SRef.parse(scanner)
+        ||     SRef.parse(scanner)
 
          //if (NFunction(scanner, out tree)) return tree;
         //if (NUDF(scanner, out tree)) return tree;
@@ -673,175 +673,130 @@ class SCatOp extends StringExpression {
     }
 }
 
-/*
-abstract class SRef : StringExpression
-{
-    abstract public void set(Context context, string value);
 
-    public static bool parse(Scanner scanner, out SRef tree)
-    {
-        if (!scanner.consume_sid())
-        {
-            tree = null;
-            return false;
-        }
+abstract class SRef extends StringExpression {
 
-        string sid = scanner.current()._text;
+    public abstract set$(context: Context, value: string) : void
+
+    public static parse(scanner: Scanner) : SRef  {
+        if (!scanner.consumeSid()) return null
+
+        const sid = scanner.current().text
 
         // If we don't have a ( or [, this can only be a scalar
-        if (!scanner.consume_symbol(Scanner.TokenType.PAR) && !scanner.consume_symbol(Scanner.TokenType.BRA))
-        {
-            tree = new SScalarRef(sid);
-            return true;
+        if (!scanner.consumeSymbol(TokenType.PAR) && !scanner.consumeSymbol(TokenType.BRA)) {
+            return new SScalarRef(sid)
         }
 
         // Having read a ( or [, the SRef production is no longer an
         // optional parse - we must complete it or fail with a syntax
         // error. From now on, we can't return false. It's a vector or
         // an array so we must have at least one subscript.
-        NumericExpression col_expr;
-        if (!NumericExpression.parse(scanner, out col_expr))
-        {
-            tree = null;
-            return false;
-        }
+        const colExpr = NumericExpression.parse(scanner)
+        if (!colExpr) return null
 
         // Now we must have either a comma, indicating this is an array
         // rather than a vector, or a ) or ], indicating this as a
         // vector.
-        if (scanner.consume_symbol(Scanner.TokenType.REN) || scanner.consume_symbol(Scanner.TokenType.KET))
-        {
-            tree = new SVectorRef(sid, col_expr);
-            return true;
+        if (scanner.consumeSymbol(TokenType.REN) || scanner.consumeSymbol(TokenType.KET)) {
+            return new SVectorRef(sid, colExpr)
         }
 
-        // Having read a ( or [, the NRef production is no longer an
+        // Having read a ( or [, the SRef production is no longer an
         // optional parse - we must complete it or fail with a syntax
         // error. From now on, we can't return false.
-        if (!scanner.consume_symbol(Scanner.TokenType.COMMA))
-        {
-            tree = null;
-            return false;
+        if (!scanner.consumeSymbol(TokenType.COMMA)) return null
+
+        const rowExpr = NumericExpression.parse(scanner)
+        if (!rowExpr) return null
+
+        if (!scanner.consumeSymbol(TokenType.REN) && !scanner.consumeSymbol(TokenType.KET)) {
+            return null
         }
 
-        NumericExpression row_expr;
-        if (!NumericExpression.parse(scanner, out row_expr))
-        {
-            tree = null;
-            return false;
-        }
-
-        if (!scanner.consume_symbol(Scanner.TokenType.REN) && !scanner.consume_symbol(Scanner.TokenType.KET))
-        {
-            tree = null;
-            return false;
-        }
-
-        tree = new SArrayRef(sid, col_expr, row_expr);
-        return true;
+        return new SArrayRef(sid, colExpr, rowExpr);
     }
 
-    abstract public bool hasConstantSubscripts();
+    public abstract hasConstantSubscripts() : boolean
 
-    abstract public void prepare(Context context);
-}
-
-class SScalarRef : SRef
-{
-    string _name;
-
-    public SScalarRef(string name)
-    {
-        _name = name;
-    }
-    override public string value(Context context)
-    {
-        return context.getString(_name);
-    }
-    override public string source()
-    {
-        return _name;
-    }
-    override public void set(Context context, string value)
-    {
-        context.set(_name, value);
-    }
-
-    override public bool hasConstantSubscripts()
-    {
-        return false;
-    }
-
-    public override void prepare(Context context)
-    {
-        throw new NotImplementedException();
+    public prepare(context: Context) {
     }
 }
 
-class SVectorRef : SRef
-{
-    string _name;
-    NumericExpression _col;
-    public SVectorRef(string name, NumericExpression col_expr)
-    {
-        _name = name;
-        _col = col_expr;
+class SScalarRef extends SRef {
+
+    public constructor(protected readonly name: string) {
+        super()
     }
-    override public string value(Context context)
-    {
-        return context.getString(_name, _col.value(context));
+
+    public value(context: Context) : string {
+        return context.getString(this.name)
     }
-    override public string source()
-    {
-        return _name + '[' + _col.source() + ']';
+
+    public source() : string {
+        return this.name
     }
-    override public void set(Context context, string value)
-    {
-        context.set(_name, _col.value(context), value);
+
+    public set$(context: Context, value: string) {
+        context.set$(this.name, value)
     }
-    override public bool hasConstantSubscripts()
-    {
-        return _col.isConstant();
-    }
-    public override void prepare(Context context)
-    {
-        context.dimString(_name, _col.value(context));
+
+    public hasConstantSubscripts() : boolean {
+        return false
     }
 }
 
-class SArrayRef : SRef
-{
-    string _name;
-    NumericExpression _col;
-    NumericExpression _row;
+class SVectorRef extends SRef {
 
-    public SArrayRef(string name, NumericExpression col_expr, NumericExpression row_expr)
-    {
-        _name = name;
-        _col = col_expr;
-        _row = row_expr;
+    public constructor(protected readonly name: string, protected readonly col: NumericExpression) {
+        super()
     }
-    override public string value(Context context)
-    {
-        return context.getString(_name, _col.value(context), _row.value(context));
+
+    public value(context: Context) : string {
+        return context.getVector$(this.name, this.col.value(context))
     }
-    override public string source()
-    {
-        return _name + '[' + _col.source() + ',' + _row.source() + ']';
+
+    public source() : string {
+        return this.name + '[' + this.col.source() + ']'
     }
-    override public void set(Context context, string value)
-    {
-        context.set(_name, _col.value(context), _row.value(context), value);
+
+    public set$(context: Context, value: string) : void {
+        context.setVector$(this.name, this.col.value(context), value)
     }
-    override public bool hasConstantSubscripts()
-    {
-        return _col.isConstant() && _row.isConstant();
+
+    public hasConstantSubscripts() : boolean {
+        return this.col.isConstant();
     }
-    public override void prepare(Context context)
-    {
-        context.dimString(_name, _col.value(context), _row.value(context));
+
+    public prepare(context: Context) : void {
+        context.dimVector$(this.name, this.col.value(context))
     }
 }
 
+class SArrayRef extends SRef {
 
-*/
+    public constructor(protected readonly name: string,
+                       protected readonly col: NumericExpression,
+                       protected readonly row: NumericExpression) {
+        super()
+    }
+    public value(context: Context) : string {
+        return context.getArray$(this.name, this.col.value(context), this.row.value(context))
+    }
+
+    public source() : string {
+        return this.name + '[' + this.col.source() + ',' + this.row.source() + ']'
+    }
+
+    public set$(context: Context, value: string) : void {
+        context.setArray$(this.name, this.col.value(context), this.row.value(context), value)
+    }
+
+    public hasConstantSubscripts() : boolean {
+        return this.col.isConstant() && this.row.isConstant();
+    }
+
+    public prepare(context: Context) : void {
+        context.dimArray$(this.name, this.col.value(context), this.row.value(context));
+    }
+}

@@ -61,7 +61,10 @@ class BasicParser
 
     public parseStatement(scanner: Scanner) : Statement | undefined {
         return EndStmt.parse(scanner)
+            || LetStmt.parse(scanner)
             || PrintStmt.parse(scanner)
+            || NLetStmt.parseNLet(false, scanner)
+            || SLetStmt.parseSLet(false, scanner)
         /*
         return ChangeStmt.parseChange(scanner, out statement)
             || DataStmt.parseData(scanner, out statement)
@@ -69,7 +72,6 @@ class BasicParser
             || EndStmt.parseEnd(scanner, out statement)
             || ForStmt.parseFor(scanner, out statement)
             || InputStmt.parseInput(scanner, out statement)
-            || LetStmt.parseLet(scanner, out statement)
             || LinputStmt.parseLinput(scanner, out statement)
             || IfStmt.parseIf(scanner, out statement)
             || StopStmt.parseStop(scanner, out statement)
@@ -81,8 +83,6 @@ class BasicParser
             || OnGosubStmt.parseOnGosub(scanner, out statement)
             || OnGotoStmt.parseOnGoto(scanner, out statement)
             || OnThenStmt.parseOnThen(scanner, out statement)
-            || NLetStmt.parseNLet(false, scanner, out statement)
-            || SLetStmt.parseSLet(false, scanner, out statement)
             || RandomiseStmt.parseRandomise(scanner, out statement)
             || ReadStmt.parseRead(scanner, out statement)
             || RemStmt.parseRem(scanner, out statement)

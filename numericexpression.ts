@@ -146,7 +146,7 @@ class ExpressionParser {
         return NLiteral.parseLiteral(scanner)
                ||   Negate.parseNegate(scanner)
                ||   NBracket.parse(scanner)
-           //    ||   NRef.parse(scanner)
+               ||   NRef.parse(scanner)
                ||   NFunction.parse(scanner)
     }
 
@@ -652,172 +652,133 @@ class NBinOp extends NumericExpression {
     }
 }
 
-/*
+
 abstract class NRef extends NumericExpression
 {
-    abstract public void set(Context context, double value);
-    abstract public bool hasConstantSubscripts();
-    virtual public void prepare(Context context)
-    {
+    public abstract  set(context: Context, value: number) : void
+    public abstract  hasConstantSubscripts() : boolean
+    public prepare(context: Context) {
     }
-    public static bool parse(Scanner scanner, out NRef tree)
-    {
-        if (!scanner.consume_nid())
-        {
-            tree = null;
-            return false;
+
+    public static parse(scanner: Scanner) : NRef  {
+        if (!scanner.consumeNid()) {
+            return null;
         }
 
-        string nid = scanner.current()._text;
+        const nid = scanner.current().text;
 
         // If we don't have a ( or [, this can only be a scalar
-        if (!scanner.consume_symbol(Scanner.TokenType.PAR) && !scanner.consume_symbol(Scanner.TokenType.BRA))
-        {
-            tree = new NScalarRef(nid);
-            return true;
+        if (!scanner.consumeSymbol(TokenType.PAR) && !scanner.consumeSymbol(TokenType.BRA)) {
+            return new NScalarRef(nid)
         }
 
         // Having read a ( or [, the NRef production is no longer an
         // optional parse - we must complete it or fail with a syntax
         // error. From now on, we can't return false. It's a vector or
         // an array so we must have at least one subscript.
-        NumericExpression col_expr;
-        if (!NumericExpression.parse(scanner, out col_expr))
-        {
-            tree = null;
-            return false;
-        }
+        const colExpr = NumericExpression.parse(scanner)
+        if (!colExpr) return null
 
         // Now we must have either a comma, indicating this is an array
         // rather than a vector, or a ) or ], indicating this as a
         // vector.
-        if (scanner.consume_symbol(Scanner.TokenType.REN) || scanner.consume_symbol(Scanner.TokenType.KET))
-        {
-            tree = new NVectorRef(nid, col_expr);
-            return true;
+        if (scanner.consumeSymbol(TokenType.REN) || scanner.consumeSymbol(TokenType.KET)) {
+            return new NVectorRef(nid, colExpr)
         }
 
-        // Having read a ( or [, the NRef production is no longer an
-        // optional parse - we must complete it or fail with a syntax
-        // error. From now on, we can't return false.
-        if (!scanner.consume_symbol(Scanner.TokenType.COMMA))
-        {
-            tree = null;
-            return false;
-        }
+        // Only alternative is the rest of an array reference: "," next "]"
+        if (!scanner.consumeSymbol(TokenType.COMMA)) return null
 
-        NumericExpression row_expr;
-        if (!NumericExpression.parse(scanner, out row_expr))
-        {
-            tree = null;
-            return false;
-        }
+        const rowExpr = NumericExpression.parse(scanner)
+        if (!rowExpr) return null
 
-        if (!scanner.consume_symbol(Scanner.TokenType.REN) && !scanner.consume_symbol(Scanner.TokenType.KET))
-        {
-            tree = null;
-            return false;
-        }
+        if (!scanner.consumeSymbol(TokenType.REN) && !scanner.consumeSymbol(TokenType.KET)) return null
 
-        tree = new NArrayRef(nid, col_expr, row_expr);
-        return true;
+        return new NArrayRef(nid, colExpr, rowExpr)
     }
 }
 
-class NScalarRef : NRef
-{
-    public string _name;
+class NScalarRef extends NRef {
 
-    public NScalarRef(string name)
-    {
-        _name = name;
-    }
-    override public double value(Context context)
-    {
-        return context.getDouble(_name);
-    }
-    override public string source()
-    {
-        return _name;
-    }
-    override public void set(Context context, double value)
-    {
-        context.set(_name, value);
+    public constructor(protected readonly name: string) {
+        super()
     }
 
-    public bool same(NScalarRef other)
-    {
-        return _name == other._name;
+    public value(context: Context) : number {
+        return context.getNumber(this.name)
     }
 
-    override public bool hasConstantSubscripts()
-    {
-        return false;
+    public source() : string {
+        return this.name
+    }
+
+    public set(context: Context, value: number) : void {
+        context.setScalar(this.name, value)
+    }
+
+    public same(other: NScalarRef) : boolean {
+        return this.name == other.name
+    }
+
+    public hasConstantSubscripts() : boolean {
+        return false
     }
 }
 
-class NVectorRef : NRef
+class NVectorRef extends NRef
 {
-    string _name;
-    NumericExpression _col;
-    public NVectorRef(string name, NumericExpression col_expr)
-    {
-        _name = name;
-        _col = col_expr;
+    public constructor (protected readonly name: string, protected readonly col: NumericExpression) {
+        super()
     }
-    override public double value(Context context)
-    {
-        return context.getDouble(_name, _col.value(context));
+
+    public value(context: Context) : number {
+        return context.getVector(this.name, this.col.value(context))
     }
-    override public string source()
-    {
-        return _name + '[' + _col.source() + ']';
+
+    public source() : string {
+        return this.name + '[' + this.col.source() + ']'
     }
-    override public void set(Context context, double value)
-    {
-        context.set(_name, _col.value(context), value);
+
+    public set(context: Context, value: number) : void {
+        context.setVector(this.name, this.col.value(context), value)
     }
-    public override bool hasConstantSubscripts()
-    {
-        return _col.isConstant();
+
+    public hasConstantSubscripts() : boolean {
+        return this.col.isConstant()
     }
-    public override void prepare(Context context)
-    {
-        context.dimDouble(_name, _col.value(context));
+
+    public  prepare(context: Context) : void {
+        context.dimVector(this.name, this.col.value(context))
     }
 }
 
-class NArrayRef : NRef
+class NArrayRef extends NRef
 {
-    string _name;
-    NumericExpression _col;
-    NumericExpression _row;
 
-    public NArrayRef(string name, NumericExpression col_expr, NumericExpression row_expr)
-    {
-        _name = name;
-        _col = col_expr;
-        _row = row_expr;
+    public constructor(protected readonly name: string,
+                       protected readonly col: NumericExpression,
+                       protected readonly row: NumericExpression){
+        super()
     }
-    override public double value(Context context)
-    {
-        return context.getDouble(_name, _col.value(context), _row.value(context));
-    }
-    override public string source()
-    {
-        return _name + '[' + _col.source() + ',' + _row.source() + ']';
-    }
-    override public void set(Context context, double value)
-    {
-        context.set(_name, _col.value(context), _row.value(context), value);
-    }
-    public override bool hasConstantSubscripts()
-    {
-        return _col.isConstant() && _row.isConstant();
-    }
-    public override void prepare(Context context)
-    {
-        context.dimDouble(_name, _col.value(context), _row.value(context));
-    }
-*/
 
+    public value(context: Context) : number {
+        return context.getArray(this.name, this.col.value(context), this.row.value(context))
+    }
+
+    public source() : string {
+        return this.name + '[' + this.col.source() + ',' + this.row.source() + ']';
+    }
+
+    public set(context: Context, value: number) : void {
+        context.setArray(this.name, this.col.value(context), this.row.value(context), value)
+    }
+
+    public hasConstantSubscripts() : boolean {
+        return this.col.isConstant() && this.row.isConstant()
+    }
+
+    public prepare(context: Context) : void
+    {
+        context.dimArray(this.name, this.col.value(context), this.row.value(context))
+    }
+}
