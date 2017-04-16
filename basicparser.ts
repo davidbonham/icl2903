@@ -96,7 +96,6 @@ class BasicParser
         // We must have at least one statement next. If we fail, then
         // return its syntax error
         const statement = this.parseStatement(scanner)
-        console.log("parseStatementSequence source=" + statement.source() + " isend=" + (statement instanceof EndStmt))
         if (statement == undefined) {
 
             this.error.set(ErrorCode.StatementNotRecognised)
@@ -140,7 +139,7 @@ class BasicParser
                 return new LineCmd(lineNo, statementSeq);
             }
             else {
-                return this.error;
+                return this.error.get();
             }
         }
     }
@@ -269,12 +268,12 @@ class BasicParser
             const stmt = this.parseStatement(scanner)
 
             if (stmt instanceof (Statement)) {
-                /*
+
                 if (stmt.isImmediateStatement()) {
 
                     // Parsed the statement and it is allowed in immediate
                     // mode so just check there's no remaining text.
-                    return eos(scanner, stmt);
+                    return this.eos(scanner, stmt);
                 }
                 else  {
 
@@ -282,7 +281,6 @@ class BasicParser
                     // immediate mode
                     return ErrorCode.NotImmediate;
                 }
-                */
             }
             else {
                 // We didn't parse a statement. If an error is set, it means

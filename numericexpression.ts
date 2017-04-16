@@ -256,7 +256,9 @@ abstract class NFunction extends NumericExpression {
     }
 
     public static LOG(n: number) : number {
-        return Math.log(n)
+        const result = Math.log(n)
+        if (Number.isNaN(result)) throw new Utility.RunTimeError(ErrorCode.OverflowOrUnassigned)
+        return result
     }
 
     // From the mozilla documentation for regexp
@@ -265,6 +267,7 @@ abstract class NFunction extends NumericExpression {
     }
 
     public static OCC(search: string, target: string) : number {
+        if (target == "" || search == "") return 0
         return (search.match(RegExp(NFunction.escapeRegExp(target), "g"))||[]).length
     }
 
@@ -321,7 +324,7 @@ abstract class NFunction extends NumericExpression {
 
     public static VAL(s: string) : number {
         const result = +s
-        if (result == Number.NaN || result == Number.POSITIVE_INFINITY || result == Number.POSITIVE_INFINITY) {
+        if (Number.isNaN(result) || !Number.isFinite(result)) {
             throw new Utility.RunTimeError(ErrorCode.InvString)
         }
         return result

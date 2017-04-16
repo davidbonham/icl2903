@@ -282,7 +282,7 @@ namespace Session {
             // an error code or null indicating no content
             const parser = new BasicParser
             const node = parser.parse(command)
-            wto("node=" + node)
+            wto("node=" + node + "is command " + (node instanceof Command) + " is statement " + (node instanceof Statement))
             if (node instanceof Command) {
 
                 // ? is a special case because the session has the
@@ -301,22 +301,25 @@ namespace Session {
             else if (node instanceof Statement) {
 
                 const statement : Statement = node;
-/*
+
                 // Immediate statements may raise exceptions. Execute
                 // them in our interactive context. If they produce
                 // output but don't end the line (eg 'PRINT 3;') we
                 // clean up ourselves
-                try{
-                    statement.execute(_command_context);
-                    _command_context._owner._channels.close_channels();
+                try {
+                    statement.execute(this.commandContext)
+                    this.commandContext.owner.channels.closeChannels()
                 }
-                catch (RunTimeError e) {
-                    _command_context._owner._channels.close_channels();
-                    ErrorCode.lastError = e._message;
-                    _tty.put_line(ErrorCode.lastError);
+                catch (e) {
+                    if (e instanceof Utility.RunTimeError) {
+                        this.commandContext.owner.channels.closeChannels()
+                        this.lastError = e.error
+                        this.println(this.lastError)
+                    }
+                    else{
+                        throw e
+                    }
                 }
-
-*/
             }
             else if (typeof(node) == "string") {
 
