@@ -188,7 +188,7 @@ if __name__ == '__main__':
     if len(sys.argv) == 2:
         filesystem_root = sys.argv[1]
         if not os.path.isdir(filesystem_root):
-            print >>stderr, filesystem_root, 'is not a directory'
+            print >>sys.stderr, filesystem_root, 'is not a directory'
         else:
             run()
     else:
