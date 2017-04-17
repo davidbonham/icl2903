@@ -31,7 +31,7 @@ namespace BIF {
             // for positive values - so "-4" but "4"
 
             // Get the initial text form
-            const hasExponent = Math.abs(n) < 0.1 || 1000000 <= Math.abs(n)
+            const hasExponent = n != 0 && Math.abs(n) < 0.1 || 1000000 <= Math.abs(n)
             let number : string;
             let exponent : string
             if (hasExponent) {
@@ -63,7 +63,7 @@ namespace BIF {
             console.log("removed leading .=" + number)
 
             // If we have removed everything, then we must be zero
-            if (number == " ") number = "0";
+            if (number == "") number = "0";
             console.log("handled empty result=" + number)
 
             return hasExponent ? number + "E" + exponent : number

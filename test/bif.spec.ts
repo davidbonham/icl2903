@@ -2,6 +2,10 @@
 
 describe("strS", () => {
 
+    it("zero", () => expect(
+        BIF.str$.call(0)
+    ).toBe("0"))
+
     it("tiny negative", () => expect(
         BIF.str$.call(-1e-6)
     ).toBe("-1E-6"))
