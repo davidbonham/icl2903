@@ -72,8 +72,21 @@ class Program {
 
     public get state()  { return this._state}
 
-    public breakIn() : void {
+    public breakIn(context: Context) : void {
 
+        // Because an INPUT handler may be running and not being ticked,
+        // we need to handle that specially here, alas.
+        if (this._state == ProgramState.Input) {
+            this.session.println("/Z/")
+        }
+
+        // Close all of the channels, whatever the reason for breaking.
+        // This will ensure we are at the start of the line on all
+        // terminal format channels.
+        this._channels.closeChannels()
+
+        // Now display the interrupt on the session tty.
+        this.session.println("LINE " + (context.stmtIndex/100) + " BREAK IN" )
         this._state = ProgramState.Interrupted
     }
 
@@ -308,30 +321,39 @@ class Program {
         }
     }
 
-    public  step(context: Context) {
+    public  step(context: Context, line: string) {
 
         let result = ErrorCode.NoError;
 
         try {
-            wto("stepping to next index " + context.nextStmtIndex)
-            context.stmtIndex = context.nextStmtIndex
 
-            if (this.contents[context.stmtIndex] == undefined) throw new Utility.RunTimeError("CALLED LINE NUMBER DOES NOT EXIST");
+            if (this._state == ProgramState.Running) {
+                wto("stepping to next index " + context.nextStmtIndex)
+                context.stmtIndex = context.nextStmtIndex
 
-            // The program is running and positioned at the next statement
-            // to execute. Execute the current statement. If all goes well,
-            // move on to the next statement for next time. Otherwise, if
-            // there was an error, leave us positioned here.
+                if (this.contents[context.stmtIndex] == undefined) throw new Utility.RunTimeError("CALLED LINE NUMBER DOES NOT EXIST");
 
-            // Set up the default action of advancing to the next statement
-            // in the context.
-            context.nextStmtIndex = this.nextStatementIndex(context.stmtIndex)
-            wto("setting its next to " + context.nextStmtIndex)
+                // The program is running and positioned at the next statement
+                // to execute. Execute the current statement. If all goes well,
+                // move on to the next statement for next time. Otherwise, if
+                // there was an error, leave us positioned here.
 
-            // Execute the current statement
-            this.contents[context.stmtIndex].execute(context)
+                // Set up the default action of advancing to the next statement
+                // in the context.
+                context.nextStmtIndex = this.nextStatementIndex(context.stmtIndex)
+                wto("setting its next to " + context.nextStmtIndex)
 
-            if (this.state == ProgramState.Interrupted) throw new Utility.RunTimeError("BREAK IN");
+                // Execute the current statement
+                this.contents[context.stmtIndex].execute(context)
+            }
+            else {
+                wto("received data for input")
+                // Input has been provided for the current input statement
+                const more = this.inputHandler(line)
+                this._state = more ? ProgramState.Input : this._oldState
+            }
+
+            //if (this.state == ProgramState.Interrupted) throw new Utility.RunTimeError("BREAK IN");
 
                 //if (running) {
                 //
@@ -342,27 +364,26 @@ class Program {
                 //
                 //  context.currentStatementIndex = candidate
                 //}
-            }
-            catch (e)
-            {
-                if (e instanceof Error) throw e
+        }
+        catch (e)
+        {
+            if (e instanceof Error) throw e
 
-                // Close all of the channels, whatever the reason for breaking.
-                // This will ensure we are at the start of the line on all
-                // terminal format channels.
-                this._channels.closeChannels()
+            // Close all of the channels, whatever the reason for breaking.
+            // This will ensure we are at the start of the line on all
+            // terminal format channels.
+            this._channels.closeChannels()
 
-                // Now display the error on the session tty.
-                result = e.error
-                this.session.println("LINE " + (context.stmtIndex/100) + " " + e.error)
-                this._state = ProgramState.Interrupted
-            }
+            // Now display the error on the session tty.
+            result = e.error
+            this.session.println("LINE " + (context.stmtIndex/100) + " " + e.error)
+            this._state = ProgramState.Interrupted
+        }
 
 
-            // If there was an error, return it (although we have already displayed
-            // it) to tell the caller it happened.
-            return result;
-
+        // If there was an error, return it (although we have already displayed
+        // it) to tell the caller it happened.
+        return result;
     }
 
     public setInputHandler(handler: (line: string) => boolean) {
