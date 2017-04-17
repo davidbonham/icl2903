@@ -159,10 +159,10 @@ namespace Session {
                     switch (event.kind) {
 
                         case Terminal.EventKind.Interrupt:
-                            session.program.breakIn()
+                            session.program.breakIn(session.commandContext)
                             break
                         case Terminal.EventKind.None:
-                            session.program.step(session.commandContext)
+                            session.program.step(session.commandContext, null)
                             break
                         default:
                             throw "unexpect event type " + event.kind + " while running"
@@ -178,11 +178,10 @@ namespace Session {
                     switch (event.kind) {
 
                         case Terminal.EventKind.Interrupt:
-                            session.program.breakIn()
+                            session.program.breakIn(session.commandContext)
                             break
                         case Terminal.EventKind.Line:
-                            wto("passing '" + event.text + "' ti input handler")
-                            session.program.stepInput(event.text)
+                            session.program.step(session.commandContext, event.text)
                             break
                         default:
                             break
