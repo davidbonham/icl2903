@@ -1,0 +1,15 @@
+BU//0
+10 PRINT MUL$("123456789 ",7)
+11 PRINT "COMMA - NUMERIC AND STRING"
+15 PRINT " 1            -2              3              0"
+20 PRINT 1,-2,3,0
+24 PRINT "*             *              *              *"
+26 PRINT "*","*","*","*"
+30 PRINT "TABS"
+32 PRINT "     1              2"
+33 PRINT TAB(5);1;TAB(20);2
+35 PRINT "    *              *"
+37 PRINT TAB(5);"*";TAB(20);"*"
+40 PRINT "TABS - SECOND BEFORE FIRST"
+41 PRINT TAB(10);10;TAB(5);5
+999 END

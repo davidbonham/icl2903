@@ -1,0 +1,5 @@
+BU//0
+10 FOR X=1.0 TO 12.0 STEP 0.5
+20 PRINT USING "-###.#   -#.####":X,SQR(X)
+30 NEXT X
+40 END

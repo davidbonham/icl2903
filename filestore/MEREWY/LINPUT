@@ -1,0 +1,5 @@
+BU
+10 LINPUT A$
+20 PRINT "'";A$;"'"
+30 GOTO 10
+99 END
