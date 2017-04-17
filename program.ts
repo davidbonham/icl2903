@@ -104,6 +104,20 @@ class Program {
         return count
     }
 
+    public size() : number {
+        // The size of our program is approximated by adding together the
+        // lengths of the sources of the lines, adding in four bytes for
+        // the line number. Note that we ignore statements generated from
+        // expanding each line.
+        let count = 0
+        this.contents.forEach((statement: Statement, line: number) => {
+            if ((line % 100) === 0) count += statement.source().length + 4
+        })
+
+        return count
+    }
+
+
     public lines(from: number, to: number) : Statement[] {
 
         // Convert line numbers to indices

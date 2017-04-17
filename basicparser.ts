@@ -156,6 +156,12 @@ class BasicParser
         else if (scanner.consumeCommand("CAT")) {
             return this.eoc(scanner, CatalogueCmd.parse(scanner, false));
         }
+        else if (scanner.consumeCommand("DAT")) {
+            return this.eoc(scanner, DateCmd.parse(scanner));
+        }
+        else if (scanner.consumeCommand("LEN")) {
+            return this.eoc(scanner, LengthCmd.parse(scanner));
+        }
         else if (scanner.consumeCommand("LIB")) {
             return this.eoc(scanner, CatalogueCmd.parse(scanner, true));
         }
@@ -187,10 +193,6 @@ class BasicParser
         else if (scanner.consume_command("CON"))
         {
             return eoc(scanner, ContinueCmd.parse(scanner));
-        }
-        else if (scanner.consume_command("DAT"))
-        {
-            return eoc(scanner, DateCmd.parse(scanner));
         }
         else if (scanner.consume_command("DEL"))
         {
