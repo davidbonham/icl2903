@@ -129,15 +129,11 @@ class InputStmt extends Statement {
 
     protected inputHandler(context: Context, tty: TerminalChannel, line: string) : boolean {
 
-        wto("input handler passed '" + line + "' and we are at item " + this.nextItemNumber)
         // The UI has provided us with a line of text. Split it up into
         // tokens
         let tokens = this.tokeniseLine(line)
-        wto("tokens: " + tokens)
 
         for (const token of tokens) {
-
-            wto("token '" + token + "' for item " + this.nextItemNumber + " of " + this.items.length)
 
             // If we have run out of input items, the user has provided too
             // many, so we just discard them
@@ -152,21 +148,20 @@ class InputStmt extends Statement {
             if (this.items[this.nextItemNumber-1].store(context, token)) {
 
                 // OK so advance to the next input item
-                wto("stored ok")
                 this.nextItemNumber++;
             }
             else {
 
                 // This item is the wrong type. Flush this and the remaining
                 // items and tell the user to type them again
-                tty.writes("LINE " + (context.stmtIndex/100) + " BAD INPUT - RETYPE FROM ITEM " + this.nextItemNumber + "\n")
+                if (context.stmtIndex != 0) tty.writes("LINE " + (context.stmtIndex/100) + " ")
+                tty.writes("BAD INPUT - RETYPE FROM ITEM " + this.nextItemNumber + "\n")
                 break
             }
         }
 
         // If we still have input items left to process, we need more input
         // otherwise we can resume executng the next statement
-        wto("input handler exists with next item " + this.nextItemNumber)
         const more = this.nextItemNumber <= this.items.length
         if (more) {
             tty.writes("? ")
