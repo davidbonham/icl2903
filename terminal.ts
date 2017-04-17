@@ -93,7 +93,7 @@ namespace Terminal
             if (is_ctrl) {
 
                 // Control characters that interrupt. Ignore the others
-                if (ch == "A" || ch == "C" || ch == "X") {
+                if (ch == "A" || ch == "C" || ch == "Z") {
                     this.terminal.addCharacter(ch, true)
                 }
             }
@@ -330,7 +330,7 @@ namespace Terminal
         }
 
         public key(ch: string) {
-            this.sounds.playSound('keyclick', 0, false, null)
+            this.sounds.playSound(ch == "\r" ? "crlf" : "keyclick", 0, false, null)
             if (this.getEcho()) {
                 this.tty.value += ch;
                 this.tty.scrollTop = this.tty.scrollHeight;
@@ -479,6 +479,7 @@ namespace Terminal
                     if (this.lineBuffer !== "") {
                         this.printer.println("/" + character + "/");
                         this.lineBuffer = "";
+                        this.printer.startPrinting()
                     }
                 }
             }
@@ -494,7 +495,7 @@ namespace Terminal
                     }
                 }
                 else if (character == "\r") {
-                    this.printer.print(character)
+                    this.printer.key(character)
                     this.generateEvent({kind: EventKind.Line, text: this.lineBuffer})
                     this.lineBuffer = "";
                 }
