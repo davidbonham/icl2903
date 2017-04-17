@@ -408,7 +408,7 @@ namespace Terminal
             // If the session is busy, the only events it expects are
             // interrupts and None events that tick the program. Set up
             // a time to generate the tick
-            if (this.state == State.Running) setTimeout(()=>this.generateEvent({kind: EventKind.None}), 1000)
+            if (this.state == State.Running) setTimeout(()=>this.generateEvent({kind: EventKind.None}), 1)
         }
 
         private generateEvent(event: Event) : void {
