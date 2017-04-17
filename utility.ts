@@ -1,5 +1,17 @@
 namespace Utility {
 
+    /**
+     * Some operations in BASIC convert their value to an integer by rounding
+     * rather than truncation. We capture the rounding method here so we
+     * can use this function to indicate the value is being rounded for
+     * BASIC
+     *
+     * @param value     the value to round
+     */
+    export function round(value: number) : number {
+        return Math.floor(value + 0.5)
+    }
+
     export function basicDate(date : Date) : string  {
 
         // For items that can be one or two characters, prefix with a 0

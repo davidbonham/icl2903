@@ -61,6 +61,7 @@ class BasicParser
 
     public parseStatement(scanner: Scanner) : Statement | undefined {
         return EndStmt.parse(scanner)
+            || InputStmt.parse(scanner)
             || LetStmt.parse(scanner)
             || PrintStmt.parse(scanner)
             || NLetStmt.parseNLet(false, scanner)
@@ -71,7 +72,6 @@ class BasicParser
             || DimStmt.parseDim(scanner, out statement)
             || EndStmt.parseEnd(scanner, out statement)
             || ForStmt.parseFor(scanner, out statement)
-            || InputStmt.parseInput(scanner, out statement)
             || LinputStmt.parseLinput(scanner, out statement)
             || IfStmt.parseIf(scanner, out statement)
             || StopStmt.parseStop(scanner, out statement)

@@ -5,7 +5,11 @@
 enum  ProgramState {Stopped, Interrupted, Input, Running}
 class Program {
 
-    protected _state : ProgramState = ProgramState.Stopped
+    // The current state of the program and, if an INPUT statement is
+    // executing, what the previous state was
+    protected _state    : ProgramState = ProgramState.Stopped
+    protected _oldState : ProgramState
+
 
     // Our preogram is a sparse array of statement nodes, index by the line
     // number scaled by 100. Thus the line
@@ -41,6 +45,10 @@ class Program {
     // Locations of user defined functions as a map from name to index
     protected udf: { [name: string]: number; }
 
+    // For handling interactive input, the program must feed lines of input
+    // to the pending input statement via this handler
+    protected inputHandler: ((line: string) => boolean)
+
     constructor(protected readonly session: Session.Session) {
         this.contents = []
         this.continuable = false
@@ -65,6 +73,7 @@ class Program {
     public get state()  { return this._state}
 
     public breakIn() : void {
+
         this._state = ProgramState.Interrupted
     }
 
@@ -356,7 +365,15 @@ class Program {
 
     }
 
+    public setInputHandler(handler: (line: string) => boolean) {
+        this.inputHandler = handler
+        this._oldState = this._state
+        this._state = ProgramState.Input
+    }
+
     public stepInput(text: string) : void {
+        const more = this.inputHandler(text)
+        this._state = more ? ProgramState.Input : this._oldState
     }
 
     public terminate() {

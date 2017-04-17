@@ -181,6 +181,7 @@ namespace Session {
                             session.program.breakIn()
                             break
                         case Terminal.EventKind.Line:
+                            wto("passing '" + event.text + "' ti input handler")
                             session.program.stepInput(event.text)
                             break
                         default:
