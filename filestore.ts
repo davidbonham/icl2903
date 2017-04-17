@@ -145,6 +145,7 @@ class FileStore
                 result.push(path)
             }
         }
+        result.sort()
         return result
     }
 
