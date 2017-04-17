@@ -43,7 +43,6 @@ namespace BIF {
                 exponent = ""
             }
 
-            console.log("start for n=" + n + " hasExponent=" + hasExponent + " number=" + number + " exponent=" + exponent)
             if (hasExponent) {
                 // We don't display the sign of a positive exponent
                 exponent = exponent.replace("+", "");
@@ -51,20 +50,16 @@ namespace BIF {
 
             // If the number starts 0. or -0., remove the leading zero
             number = number.replace(/^(\-?)0\./, '$1.')
-            console.log("removed leading zero=" + number);
 
             // If the number contains digits after the decimal point,
             // remove any trailing zeros
             if (number.indexOf(".") != -1) number = number.replace(/0+$/, "");
-            console.log("removed trailing zeros=" + number)
 
             // If the number ends with a ., remove it
             if (number.endsWith(".")) number = number.slice(0,-1)
-            console.log("removed leading .=" + number)
 
             // If we have removed everything, then we must be zero
             if (number == "") number = "0";
-            console.log("handled empty result=" + number)
 
             return hasExponent ? number + "E" + exponent : number
         }
