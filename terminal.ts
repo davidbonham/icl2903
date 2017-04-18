@@ -122,7 +122,7 @@ namespace Terminal
             }
 
             this.tty.onkeydown = (event : KeyboardEvent) => {
-                if (terminal.debug) console.log('onkeydown ' + event);
+                if (terminal.debug) console.log("onkeydown ctrl=" + event.ctrlKey + " code=" + event.which);
 
                 let block = false;
 
@@ -338,7 +338,7 @@ namespace Terminal
         }
     }
 
-    export const enum EventKind {None, Quit, Line, Interrupt}
+    export enum EventKind {None, Quit, Line, Interrupt}
     export interface QuitEvent { kind: EventKind.Quit }
     export interface NoEvent   { kind: EventKind.None }
     export interface LineEvent { kind: EventKind.Line; text : string }
@@ -416,13 +416,11 @@ namespace Terminal
             if (this.printer.isPrinting()) {
                 // The printer is currently printing, we should wait until
                 // it finishes so add this call as a deferred action
-                wto("Terminal.generateEvent deferred next with " + event.kind)
                 this.printer.defer(() => this.generateEvent(event))
             }
             else if (this.currentHandler !== undefined) {
 
                 // Nothing is printing. Tick the current handler now
-                wto("Terminal.generateEvent nothing printing so call next with " + event.kind)
                 const result = this.currentHandler.next(event)
 
                 wto("Terminal.generateEvent received result done=" + result.done + " value=" + result.value)
@@ -432,7 +430,6 @@ namespace Terminal
                     const nextHandler = this.pendingHandler
                     this.pendingHandler = undefined
                     if (nextHandler != undefined) {
-                        wto("Terminal.generateEvent set handler to next")
                         this.setHandler(nextHandler)
                     }
                 }
@@ -455,18 +452,17 @@ namespace Terminal
 
             if (isInterrupt) {
 
+                // Flush the output generated so far
+                this.printer.flush()
                 if (this.state != State.Waiting) {
-                    // Flush the output generated so far and pass the interrupt
+                    // pass the interrupt
                     // to the session to generate BREAK IN or LINE nnnn BREAK
                     // IN as appropriate
-                    this.printer.flush()
-                    this.generateEvent({kind: EventKind.Interrupt, interrupt: character})
                 }
                 else if (this.printer.isPrinting()) {
 
                     // Flush the output and generate a BREAK IN message
                     // ourselves
-                    this.printer.flush()
                     this.printer.crlf()
                     this.printer.println("BREAK IN")
                 }
@@ -475,13 +471,14 @@ namespace Terminal
                     // the user by displaying ' /x/' on the current line where x is
                     // the interrupt character (C or Z). If we are busy, then there
                     // won't be anything to discard.
-                    this.printer.flush()
                     if (this.lineBuffer !== "") {
                         this.printer.println("/" + character + "/");
                         this.lineBuffer = "";
                         this.printer.startPrinting()
                     }
                 }
+                this.generateEvent({kind: EventKind.Interrupt, interrupt: character})
+
             }
             else if (this.state == State.Waiting && !this.printer.isPrinting()) {
 
@@ -532,10 +529,8 @@ namespace Terminal
 
         public setHandler(handler: IterableIterator<HandlerResult>) {
             this.currentHandler = handler;
-            wto("Terminal.setHandler priming handler")
             const result = this.currentHandler.next({kind: EventKind.None})
             this.processHandlerResult(result.value)
-            wto("Terminal.setHandler received state=" + State[this.state])
         }
 
         public setPendingHandler(handler: IterableIterator<HandlerResult>) {
