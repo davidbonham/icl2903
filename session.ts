@@ -23,16 +23,10 @@ namespace Session {
      * @param tty       the terminal device attached to this session
      */
     function* asleepGenerator (session: Session, tty: Terminal.Terminal) : IterableIterator<Terminal.HandlerResult> {
-        wto("enter asleepGenerator - set echo false")
         tty.echo();
-        for (;;)
-        {
-            wto("asleepGenerator yielding to receive ctrl-a as busy")
+        for (;;) {
             const ctrla : Terminal.Event = yield ({state: Terminal.State.Asleep})
-            wto("asleepGenerator received event " + ctrla.kind)
-            if (ctrla.kind == Terminal.EventKind.Interrupt && ctrla.interrupt == 'A')
-            {
-                wto("asleepGenerate to loginGenerator")
+            if (ctrla.kind == Terminal.EventKind.Interrupt && ctrla.interrupt == 'A') {
                 tty.setPendingHandler(loginGenerator (session, tty))
                 return {busy: false};
             }
@@ -71,13 +65,10 @@ namespace Session {
         // The user had attracted our attention. Enable the keyboard to allow
         // them to type the login command. We no longer appear busy.
         tty.echo()
-        for (;;)
-        {
-            wto("loginGenerator yielding idle for command line")
+        for (;;) {
             const event = yield({state: Terminal.State.Waiting})
 
             if (event.kind == Terminal.EventKind.Line) {
-                wto("loginGenerator received event '" + event.text + "'")
 
                 // HELP                                    help not yet available
                 // LOGIN user(.subid)?,password            validate login
@@ -113,7 +104,6 @@ namespace Session {
                                 session.echo()
                                 if (passwordLine.kind === Terminal.EventKind.Line) {
                                     password = passwordLine.text
-                                    wto("password='" + password + "'" )
 
                                     // Because we disabled echo instead of
                                     // letting the user type over the @s,
@@ -138,8 +128,6 @@ namespace Session {
 
     function* sessionGenerator (session: Session, tty: Terminal.Terminal) : IterableIterator<Terminal.HandlerResult> {
 
-        wto("sessionGenerator")
-
         // The user is logged so display the banner and note the starting
         // time for later use
         session.start(tty);
@@ -155,7 +143,7 @@ namespace Session {
                     // user should be unable to type and all we expect from them
                     // is an interrupt
                     const event : Terminal.Event = yield({state: Terminal.State.Running})
-                    wto("yield returned event kind ")
+                    wto("yield returned event kind " + event.kind)
                     switch (event.kind) {
 
                         case Terminal.EventKind.Interrupt:
@@ -240,7 +228,6 @@ namespace Session {
 
         public handleAsleep() {
             // Establish our event handler
-            wto("handleAsleep establishing asleepGenerator")
             this.terminal.setHandler(asleepGenerator(this, this.terminal))
         }
 
@@ -282,7 +269,6 @@ namespace Session {
             // an error code or null indicating no content
             const parser = new BasicParser
             const node = parser.parse(command)
-            wto("node=" + node + "is command " + (node instanceof Command) + " is statement " + (node instanceof Statement))
             if (node instanceof Command) {
 
                 // ? is a special case because the session has the
