@@ -21,7 +21,7 @@ class Context {
     public controlstack: ControlStack
 
     public constructor(protected _parent: Context, protected _owner: Program) {
-        this.controlstack = new ControlStack
+        this.controlstack = new ControlStack(this)
         this.clear()
     }
 

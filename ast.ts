@@ -101,37 +101,12 @@ class SequenceStmt extends Statement
         return this.statement.execute(context)
         // In this implementation, we expect to expand sequence statements
         // into the program contents so we only ever execute the first
-        // statement in the sequence.
-         /*
-        // Because a statement sequence can contain a loop:
-        //    10 PRINT "HELLO"!GOTO 10
-        // we need to handle keyboard interrupts. For similar reasons, we also need
-        // to spot when we should stop executing the sequence because an earlier
-        // statement has branched away from it:
-        //    10 A=10!IF A < 10 THEN 20!PRINT "OOPS"
-        // should not print OOPS. Handling this is a bit of a fudge at the moment
-        // and so
-        // FIXME: reworking of branching
-
-        if (context._owner._channels.get(0).interrupt()) {
-            context._owner.breakIn();
-            return false;
-        }
-        else {
-            //Log.log(Log.Level.INFO, "executing " + _statement.source());
-            var carryon = this.statement.execute(context);
-            if (carryon)
-            {
-                // Our statement didn't branch, execute the rest of the
-                // statements on the line
-                // if (_next != null) Log.log(Log.Level.INFO, "rest of sequence is " + _next.source());
-                if (this.next != null)
-                    carryon = this.next.execute(context);
-            }
-            return carryon;
-        }
-        */
-    }
+        // statement in the sequence. This expansion solves two problems:
+        //
+        // 1. In FOR I=1 TO 1E20! PRINT I!NEXT I, we poll for interrupts in
+        //    the loop
+        // 2. In IF 1=1 THEN 50!GOTO 400, we won't execute the GOTO
+     }
 
     public prepare(context: Context, line: number) : void {
 
