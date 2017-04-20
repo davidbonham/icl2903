@@ -1,3 +1,13 @@
+/**
+ * SAVE [RUN|SHARE]?
+ *
+ * There must be a program or data file in memory and it must be named.
+ * Save the data to the file store (sessionStorage) which will trigger
+ * an attempt to synchronise the file store with the remove server.
+ *
+ * The file must not already exist in the file store. There must be enough
+ * disc quota available.
+ */
 class SaveCmd extends Command
 {
     protected constructor(protected readonly access: string) {
@@ -46,6 +56,8 @@ class SaveCmd extends Command
                     source.push(line.toString() + " " + statement.source())
                 })
 
+                // The file store will complain if the file already exists
+                // or saving it will take the user over their disc quota.
                 const size = session.program.size()
                 const error = session.fileStore.saveTerminalFile(false, session.program.name, mode, this.access, source, size)
 
