@@ -183,6 +183,10 @@ class BasicParser
         else if (scanner.consumeCommand("SAV")) {
             return this.eoc(scanner, SaveCmd.parse(scanner));
         }
+        else if (scanner.consumeCommand("SCR")) {
+            return this.eoc(scanner, ScratchCmd.parse(scanner));
+        }
+
         else if (scanner.consumeCommand("TIM")) {
             return this.eoc(scanner, TimeCmd.parse(scanner));
         }
@@ -216,14 +220,6 @@ class BasicParser
                 || scanner.consume_command("REN"))
         {
             return eoc(scanner, RenumberCmd.parse(scanner));
-        }
-        else if (scanner.consume_command("SCR"))
-        {
-            return eoc(scanner, ScratchCmd.parse(scanner));
-        }
-        else if (scanner.consume_command("TIM"))
-        {
-            return eoc(scanner, TimeCmd.parse(scanner));
         }
         else if (scanner.consume_command("KEY")
                 || scanner.consume_command("TAP"))
