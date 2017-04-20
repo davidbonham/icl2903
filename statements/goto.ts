@@ -150,6 +150,7 @@ class GotoStmt extends GoSimple {
 
 class GosubStmt extends GoSimple {
     public execute(context: Context) : boolean {
+        context.controlstack.doGosub();
         context.nextStmtIndex = this.lineNumber*100
         return false;
     }
@@ -208,7 +209,7 @@ class GosubOfStmt extends GoLines {
         const line = this.destination(context)
         if (line < 0) return true
 
-        context.controlstack.doGosub();
+        context.controlstack.doGosub()
         context.nextStmtIndex = line * 100
         return false
     }
