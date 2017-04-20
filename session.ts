@@ -325,7 +325,7 @@ namespace Session {
 
         // We don't yet know how to do this:
         public mill() : number {
-            return this.elapsed() / 1000;
+            return Math.floor(this.elapsed() / 1000);
         }
     }
 }

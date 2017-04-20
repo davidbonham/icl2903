@@ -4,13 +4,15 @@ class FileStore
     password : string = "";
 
     busyButton = <HTMLInputElement>document.getElementById("fs_busy")
+    cleanButton = <HTMLInputElement>document.getElementById("fs_clean")
     onlineButton = <HTMLInputElement>document.getElementById("fs_online")
     transactionLog = <HTMLTextAreaElement>document.getElementById("fs_log")
     activeTransactions = 0;
     recentlyOnline = false
 
     log(message: string) {
-        this.transactionLog.value += message + "\n"
+        const lines = message.split("\n")
+        this.transactionLog.value += lines[0] + "\n"
         this.transactionLog.scrollTop = this.transactionLog.scrollHeight;
 
     }
@@ -19,6 +21,7 @@ class FileStore
     {
         this.busyButton.checked = this.activeTransactions > 0;
         this.onlineButton.checked = this.recentlyOnline;
+        this.cleanButton.checked = sessionStorage["DIRTY"] == ""
     }
 
     protected infoKey(isLibrary: boolean, filename: string) : string {
@@ -35,6 +38,16 @@ class FileStore
 
         // Clear the file store log
         this.transactionLog.value = ""
+
+        // Make sure the DIRTY flag is now clean as we will only have content
+        // loaded from the server
+        sessionStorage.clear()
+        for (let index = 0; index  < sessionStorage.length; ++index) {
+            const key = sessionStorage.key(index)
+            wto("cleaned " + key)
+            sessionStorage.removeItem(key)
+        }
+        sessionStorage["DIRTY"] = ""
 
         // Discard any previous accounting info and make sure the dictionary
         // exists in case we're too slow loading the real data before a login
@@ -65,6 +78,8 @@ class FileStore
 
     private storeFiles(user: string, archive: string) : void {
 
+        const isLibrary = user == "LIBRY"
+
         // Process each file in the archive and store it under the key
         // FILE_DATA_user_filename and FILE_INFO_user_filename. Store the
         // user's account data under the key ACCOUNT_user.
@@ -94,8 +109,8 @@ class FileStore
             }
             else
             {
-                sessionStorage[this.infoKey(false, filename)] = timestamp
-                sessionStorage[this.dataKey(false, filename)] = content
+                sessionStorage[this.infoKey(isLibrary, filename)] = timestamp
+                sessionStorage[this.dataKey(isLibrary, filename)] = content
                 this.log("   FILE " + user + " " + filename)
             }
         }
@@ -112,7 +127,7 @@ class FileStore
         // The result is
         this.perform("LOADALL " + username, (request: XMLHttpRequest|undefined) => {
                     this.storeFiles(username, request.responseText)
-                })
+        })
     }
 
 
@@ -132,6 +147,47 @@ class FileStore
         return false;
     }
 
+    protected synchronise() : void {
+
+        // Keep the ui up to date with the dirty file store
+        this.updateUI()
+
+        // Get the list of dirty files. This is held as as a string in
+        // the format "/key/key/key" so discard the first /
+        const files : string[] = sessionStorage["DIRTY"].substring(1).split("/")
+        for (const file of files) {
+
+            let message : string
+            if (file.startsWith("ACCOUNT_")) {
+                // Accounts are update with ACCOUNT <user>\n<data>
+                const [ACCOUNT, username] = file.split("_")
+                message = "ACCOUNT " + username + "\n" + sessionStorage[file]
+            }
+            else {
+                // The message we send is STORE <user> <file>\n<data>
+                const [FILE, DATA, username, filename] = file.split("_")
+                const data = sessionStorage[file];
+                message = "STORE " + username + " " + filename + "\n" + data
+            }
+
+            this.perform(message, (request: XMLHttpRequest|undefined) => {
+
+                // If we got a result, it was successful so remove the entry
+                // from the list of dirty files
+                if (request) {
+                    if (request.responseText.startsWith("OK")) {
+                        wto("old DIRTY=" + sessionStorage["DIRTY"] + " file=" + file)
+                        sessionStorage["DIRTY"] = sessionStorage["DIRTY"].replace("/" + file, "")
+                        wto("new DIRTY=" + sessionStorage["DIRTY"])
+                    }
+                    else {
+                        this.log(request.responseText)
+                    }
+                }
+                this.updateUI()
+            })
+        }
+    }
     // -------------------------------------------------------------------------
     // The following methods support the BASIC system's file operations
     // -------------------------------------------------------------------------
@@ -141,7 +197,10 @@ class FileStore
     }
 
     public saveAccount(account: string) : void {
-        sessionStorage["ACCOUNT_" + this.username] = account
+        const key = "ACCOUNT_" + this.username
+        sessionStorage[key] = account
+        sessionStorage["DIRTY"] += "/" + key
+        this.synchronise()
     }
 
     /**
@@ -196,10 +255,50 @@ class FileStore
        return this.infoKey(isLibrary, filename) in sessionStorage
     }
 
-    public saveTerminalFile(isLibrary: boolean, filename: string, type: string, access: string, contents: string[]) {
-        // If the file already exists we will overwrite it.
+    public saveTerminalFile(isLibrary: boolean, filename: string, type: string, access: string, contents: string[], size: number) : string {
 
-        // The file header
+        if (this.exists(isLibrary, filename)) {
+            return "DUPLICATE ENTRY";
+        }
+
+        // Make sure we don't exceed this user's account
+        const buckets = Utility.buckets(size)
+        const account = this.getAccount()
+        account.update(0, 0, 0, true);
+        if (account.disc + buckets > account.maxDisc) {
+            return "FILE STORE EXCEEDED"
+        }
+
+        // The file info is just the timestamp at the moment, in the format
+        // DDMMYYYYHHMMSS:
+        const now = new Date
+        const dd = Utility.padInteger(now.getDay(),   2, '0')
+        const mm = Utility.padInteger(now.getMonth(), 2, '0')
+        const yyyy = now.getFullYear()
+        const HH = Utility.padInteger(now.getHours(), 2, '0')
+        const MM = Utility.padInteger(now.getMinutes(), 2, '0')
+        const SS = Utility.padInteger(now.getSeconds(), 2, '0')
+        const info = dd + mm + yyyy + HH + MM + SS
+
+        // Construct the file header which will be the first line of the
+        // data. As this is a terminal format file, we do not need to add
+        // the /<record format>/<record count> part.
+        const header = type + access
+
+        // Get the file contents ready to store
+        const data = header + "\n" + contents.join("\n")
+
+        // Store the file in this session
+        const key: string = this.dataKey(isLibrary, filename)
+        sessionStorage[this.infoKey(isLibrary, filename)] = info
+        sessionStorage[key] = data
+
+        // Add the paths to the list of items not in sync with the remote
+        // server and then kick off a synchronisation.
+        sessionStorage["DIRTY"] = sessionStorage["DIRTY"] + "/" + key
+        this.synchronise()
+
+        return null
     }
 
     public getTerminalFile(isLibrary: boolean, filename: string) : string[] {
@@ -258,7 +357,6 @@ class Account {
     public constructor(protected readonly owner: FileStore, accountData: string) {
 
         const lines = accountData.split("\n")
-        wto("lines: " + lines)
         this.logins    = Account.value(lines[0], "logins")
         this.time      = Account.value(lines[1], "time")
         this.mill      = Account.value(lines[2], "mill")

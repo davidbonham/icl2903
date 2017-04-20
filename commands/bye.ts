@@ -13,11 +13,10 @@ class ByeCmd extends Command {
 
         // Update the user's account for this session
         const elapsedMinutes = session.elapsed();
-        /*
-        var account = new Account(session.filespace);
+
+        let account = session.fileStore.getAccount()
         account.update(1, elapsedMinutes, session.mill(), false);
         account.save();
-        */
 
         // Render four digits with leading zeros
         const time = ("0000" + elapsedMinutes).slice(-4)

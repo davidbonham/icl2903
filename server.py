@@ -1,12 +1,12 @@
 #!/usr/bin/python
 
-
 import sys
 
 import BaseHTTPServer
 import collections
 import datetime
 import os
+import re
 import time
 
 
@@ -16,9 +16,55 @@ filesystem_root = None
 def hello_handler(request):
     return 'OK: server up'
 
-def load_handler(request):
+def account_handler(command, data):
 
-    name = request[1]
+    if len(command) != 2: return "ERROR: MALFORMED ACCOUNT COMMAND"
+    if len(data) != 1: return "ERROR: WRONG DATA FOR ACCOUNT COMMAND"
+
+    # Clean the username we will use to form a path. Insist on all uppercase
+    # letters.
+    if not re.match("^[A-Z]{1,6}$", command[1]): return "ERROR: MALFORMED USERNAME IN ACCOUNT COMMAND"
+
+    # The accounts file should already exist
+    path = os.path.join(filesystem_root, command[1], "_account")
+    if not os.path.isfile(path): return "ERROR: NO SUCH ACCOUNT"
+
+    with open(path, "w") as account:
+        account.write(data[0])
+
+    return "OK: ACCOUNT " + command[1] + " UPDATED"
+
+def store_handler(command, data):
+
+    if len(command) != 3: return "ERROR: MALFORMED STORE COMMAND"
+    if len(data) != 1: return "ERROR: NO DATA FOR STORE COMMAND"
+
+    # Clean the username we will use to form a path. Insist on all uppercase
+    # letters.
+    if not re.match("^[A-Z]{1,6}$", command[1]): return "ERROR: MALFORMED USERNAME IN STORE COMMAND"
+
+    # Clean the filename we will use to form a path. Insist on all uppercase
+    # letters.
+    if not re.match("^[A-Z][A-Z0-9#+=>&]{0,5}$", command[1]): return "ERROR: MALFORMED FILENAME IN STORE COMMAND"
+
+    # The user directory must exist
+    user_directory = os.path.join(filesystem_root, command[1])
+    if not os.path.isdir(user_directory): return "ERROR: NO SUCH USER IN STORE"
+
+    # The file should not exist
+    path = os.path.join(user_directory, command[2])
+    if os.path.isfile(path): return "ERROR: FILE EXISTS IN STORE"
+
+    with open(path, "w") as datafile:
+        datafile.write(data[0])
+
+    return "OK: STORED " + command[1] + " " + command[2]
+
+
+
+def load_handler(command, data):
+
+    name = command[1]
     path = os.path.join(filesystem_root, name)
 
     # We don't allow any path information in filenames
@@ -31,7 +77,7 @@ def load_handler(request):
             return 'OK: file read\n' + file.read()
 
 
-def loadall_handler(request):
+def loadall_handler(command, data):
     # Given a username, contcatenate the files in that users catalogue into
     # a single response. The grammar for the result is:
     #
@@ -40,7 +86,7 @@ def loadall_handler(request):
     # content  = length bytes each as a character. We will store binary
     #            date encoded as ascii hex, one line per record
 
-    user = request[1]
+    user = command[1]
     userpath = os.path.join(filesystem_root, user)
     if not os.path.isdir(userpath): return 'ERROR: no catalogue for user "' + user + '"'
 
@@ -70,13 +116,15 @@ def loadall_handler(request):
     catalog += 'EOD'
     return catalog
 
-def error_handler(request):
-    return 'ERROR: no handler for request "' + ' '.join(request) + '"'
+def error_handler(command, DATA):
+    return 'ERROR: NO HANDLER FOR REQUEST ' + command[0]
 
 fs_handlers = {
     'LOAD'     : load_handler,
     'HELLO'    : hello_handler,
-    'LOADALL' : loadall_handler,
+    'STORE'    : store_handler,
+    'LOADALL'  : loadall_handler,
+    'ACCOUNT'  : account_handler,
 }
 
 served = {
@@ -152,8 +200,10 @@ class MyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         postVars = s.rfile.read(varLen)
         print '%d bytes:' % varLen
         print postVars
-        request = postVars.split()
-        response = fs_handlers.get(request[0], error_handler)(request)
+        request = postVars.split("\n", 1)
+        command = request[0].split(" ")
+        data = request[1:]
+        response = fs_handlers.get(command[0], error_handler)(command, data)
         s.send_response(200)
         s.send_header("Content-type", 'text/plain; charset=us-ascii')
         s.end_headers()
@@ -174,10 +224,13 @@ def post():
     cgitb.enable()
     import cgi
 
-    command = sys.stdin.read()
+    postVars = sys.stdin.read()
 
-    request = command.split()
-    response = fs_handlers.get(request[0], error_handler)(request)
+    request = postVars.split("\n", 1)
+    command = request[0].split(" ")
+    data = request[1:]
+    response = fs_handlers.get(command[0], error_handler)(command, data)
+
     print "Content-Type: text/plain; charset=us-ascii"
     print
     print response

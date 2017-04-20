@@ -177,9 +177,11 @@ class BasicParser
         else if (scanner.consumeCommand("PUN")) {
             return this.eoc(scanner, ListCmd.parse(scanner));
         }
-        else if (scanner.consumeCommand("RUN"))
-        {
+        else if (scanner.consumeCommand("RUN")) {
             return this.eoc(scanner, RunCmd.parse(scanner));
+        }
+        else if (scanner.consumeCommand("SAV")) {
+            return this.eoc(scanner, SaveCmd.parse(scanner));
         }
         else if (scanner.consumeCommand("XPU")) {
             return this.eoc(scanner, ListCmd.parse(scanner));
@@ -215,10 +217,6 @@ class BasicParser
                 || scanner.consume_command("REN"))
         {
             return eoc(scanner, RenumberCmd.parse(scanner));
-        }
-        else if (scanner.consume_command("SAV"))
-        {
-            return eoc(scanner, SaveCmd.parse(scanner));
         }
         else if (scanner.consume_command("SCR"))
         {

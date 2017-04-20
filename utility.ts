@@ -137,6 +137,10 @@ namespace Utility {
         return output
     }
 
+    export function buckets(bytes: number) : number {
+        const result = (bytes + 3 * 128 - 1) / (3 * 128)
+        return Math.floor(result)
+    }
     export function bugcheck(reason: string) {
         console.log("------------------------------- BUG CHECK ------------------------------")
         console.log(reason)
