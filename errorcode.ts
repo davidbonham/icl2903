@@ -34,7 +34,7 @@ class ErrorCode
     public static NotImmediate = "STATEMENT NOT ALLOWED IN IMMEDIATE MODE!";
     public static NotIf = "STATEMENT NOT ALLOWED IN IF!";
 
-    public lastError = ErrorCode.NoError;
+    public static lastError = ErrorCode.NoError;
 
     public static textOf(code : string)
     {
@@ -47,9 +47,9 @@ class ErrorCode
         return code;
     }
 
-    private set_error = ErrorCode.NoError;
+    private static set_error = ErrorCode.NoError;
 
-    public set(s : string) { this.set_error = s; }
-    public get() { return this.set_error; }
+    public static set(s : string) { ErrorCode.set_error = s; }
+    public static get() { return ErrorCode.set_error; }
 }
 

@@ -1,7 +1,6 @@
 function test(text: string) : number | string {
 
-    let errorCode: ErrorCode = new ErrorCode
-    let scanner = new Scanner(text, errorCode)
+    let scanner = new Scanner(text)
     let ast = NumericExpression.parse(scanner)
     let context : Context = new Context(null, null)
     try {

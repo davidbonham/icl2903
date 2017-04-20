@@ -93,7 +93,7 @@ class Scanner
     private pending:  Token;
     private p:        number;
 
-    public constructor(atext: string, private errorCode: ErrorCode) {
+    public constructor(atext: string) {
         this.text = atext + "}}";
         this.pending = null;
         this.p = 0;
@@ -497,7 +497,7 @@ class Scanner
             // followed by a letter (eg SAV was SAVX).
             if (Scanner.COMMANDS.indexOf(token) === -1) {
 
-                this.errorCode.set(ErrorCode.LetterCannotDelimitCommand);
+                ErrorCode.set(ErrorCode.LetterCannotDelimitCommand);
                 return false;
             }
 
