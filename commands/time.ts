@@ -1,3 +1,12 @@
+/**
+ * TIME
+ *
+ * Display the number of minutes this session has lasted, the total number
+ * of minutes logged on and the quota.
+ *
+ * The odd formatting of the output reflects the real system'a behavior,
+ * so don't be tempted to fix it.
+ */
 class TimeCmd extends Command {
 
     public static parse(scanner: Scanner) : TimeCmd {
