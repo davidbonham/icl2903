@@ -19,7 +19,7 @@ class ByeCmd extends Command {
         account.save();
 
         // Render four digits with leading zeros
-        const time = ("0000" + elapsedMinutes).slice(-4)
+        const time = Utility.padInteger(elapsedMinutes, 4, '0')
 
         // Tell the user they've logged out
         session.println(time + " MINS. TERM. TIME.")

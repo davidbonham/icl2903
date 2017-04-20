@@ -1,12 +1,18 @@
+/**
+ * LENGTH
+ *
+ * Display the size of the curent program or terminal format data file in
+ * lines and buckets. (A bucket is 128 24-bit words.)
+ */
 class LengthCmd extends Command {
 
     public execute(session: Session.Session) : void {
 
         // Calculate the size in buckets, rounded up to whole buckets
-        const bucketCount = Math.floor((session.program.size() + 3 * 128 - 1) / (3 * 128))
+        const bucketCount = Utility.buckets(session.program.size())
 
-        const lines = ("0000" + session.program.lineCount()).slice(-4)
-        const buckets = ("0000" + bucketCount).slice(-4)
+        const lines = Utility.padInteger(session.program.lineCount(), 4, '0')
+        const buckets = Utility.padInteger(bucketCount, 4, '0')
         session.println(lines + " LINES. " + buckets + " BUCKETS.")
     }
 
