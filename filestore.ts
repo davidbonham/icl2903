@@ -239,7 +239,7 @@ class FileStore
 
         // This seems to be an approximation to the size of the file in
         // bucket on the real system.
-        const buckets = Math.ceil((data.length + 3 * 128 - 1) / (3 * 128));
+        const buckets = Utility.buckets(data.length)
 
         // Type is B for BASIC and so on
         const type = data[0]
