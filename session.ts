@@ -315,11 +315,17 @@ namespace Session {
                 this.lastError = node;
             }
             else {
-                wto("ERROR unexpected value returned by parser")
+                Utility.bugcheck("unexpected value returned by parser")
             }
 
             // Indicate that we should carry on with this session
             return true
+        }
+
+
+        // We don't yet know how to do this:
+        public mill() : number {
+            return this.elapsed() / 1000;
         }
     }
 }

@@ -12,6 +12,10 @@ namespace Utility {
         return Math.floor(value + 0.5)
     }
 
+    export function padInteger(value: number, width: number, char: string) : string {
+        return (char.repeat(width) + round(value)).slice(-width)
+    }
+
     export function basicDate(date : Date) : string  {
 
         // For items that can be one or two characters, prefix with a 0
@@ -131,6 +135,17 @@ namespace Utility {
         }
 
         return output
+    }
+
+    export function bugcheck(reason: string) {
+        console.log("------------------------------- BUG CHECK ------------------------------")
+        console.log(reason)
+        console.log("")
+        console.log("CALL STACK")
+        console.log("")
+        console.log(new Error().stack)
+        console.log("")
+        console.log("------------------------------------------------------------------------")
     }
 
 }

@@ -64,6 +64,7 @@ class ControlStack {
         while (this.context.nextStmtIndex == 0) {
             const frame = this.stack.pop()
             if (frame instanceof ReturnFrame) {
+                wto("popped return frame return to stmt " + frame.returnToStmtIndex)
                 this.context.nextStmtIndex = frame.returnToStmtIndex
             }
             else if (frame instanceof NextFrame) {

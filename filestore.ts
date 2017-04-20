@@ -105,10 +105,6 @@ class FileStore
                 })
     }
 
-    public saveFile(username: string, filename: string) {
-        // Locate the file in our session storage and save it back to the
-        // server
-    }
 
     public loginUser(username: string, password: string) : boolean {
         for (const line of sessionStorage.accounts.split("\n")) {
@@ -124,6 +120,18 @@ class FileStore
             }
         }
         return false;
+    }
+
+    // -------------------------------------------------------------------------
+    // The following methods support the BASIC system's file operations
+    // -------------------------------------------------------------------------
+
+    public getAccount() : Account {
+        return new Account(this, sessionStorage["ACCOUNT_" + this.username])
+    }
+
+    public saveAccount(account: string) : void {
+        sessionStorage["ACCOUNT_" + this.username] = account
     }
 
     /**
@@ -177,6 +185,25 @@ class FileStore
         return result
     }
 
+    public exists(isLibrary: boolean, filename: string) {
+        const name = isLibrary ? "LIBRY" : this.username
+
+        // Currently, the onlyt thing the info holds is the timestemp in
+        // the format ddmmyyyyhhmmss.
+        const infoKey = "FILE_INFO_" + name + "_" + filename
+        return infoKey in sessionStorage
+    }
+
+    public saveTerminalFile(isLibrary: boolean, filename: string, type: string, access: string, contents: string[]) {
+        // If the file already exists we will overwrite it.
+
+        // The file header
+    }
+
+    public getTerminalFile(username: string, filename: string) : string[] {
+        return []
+    }
+
     perform(message: string, callback : (request: XMLHttpRequest) => void) : void
     {
         let ourRequest = new XMLHttpRequest();
@@ -204,3 +231,87 @@ class FileStore
         ourRequest.send(message);
     }
  }
+
+
+ // The account class is a facade providing access to the accounting
+// information held by the file store in the sessionStorage.
+class Account {
+
+    public  logins: number
+    public  maxLogins: number
+    public  time: number
+    public  maxTime: number
+    public  mill: number
+    public  maxMill: number
+    public  disc: number
+    public  maxDisc: number
+
+    public constructor(protected readonly owner: FileStore, accountData: string) {
+
+        const lines = accountData.split("\n")
+        wto("lines: " + lines)
+        this.logins    = Account.value(lines[0], "logins")
+        this.time      = Account.value(lines[1], "time")
+        this.mill      = Account.value(lines[2], "mill")
+        this.disc      = Account.value(lines[3], "disc")
+        this.maxLogins = Account.value(lines[4], "max_logins")
+        this.maxTime   = Account.value(lines[5], "max_time")
+        this.maxMill   = Account.value(lines[6], "max_mill")
+        this.maxDisc   = Account.value(lines[7], "max_disc")
+    }
+
+
+
+    public save() {
+        let lines : string[] = [
+
+            "logins " + this.logins,
+            "time " + this.time,
+            "mill " + this.mill,
+            "disc " + this.disc,
+            "max_logins " + this.maxLogins,
+            "max_time " + this.maxTime,
+            "max_mill " + this.maxMill,
+            "max_disc " + this.maxDisc,
+        ]
+
+        this.owner.saveAccount(lines.join("\n"))
+    }
+
+
+
+    protected static value(record: string, label: string) : number {
+        const bits = record.split(' ');
+        if (bits.length == 2 && bits[0] == label) {
+            return Number.parseInt(bits[1])
+        }
+        else {
+            Utility.bugcheck("account record '" + record + "' has wrong format for " + label)
+        }
+    }
+
+    public update(login: number, elapsed: number, cpu: number, disc: boolean) : void  {
+        if (disc) this.updateDisc()
+        this.time += elapsed
+        this.mill += cpu
+        this.logins += login
+    }
+
+    protected updateDisc() : void {
+
+        // The disc space used by the users files. Note that we take the size of
+        // each file in buckets rather than summing in bytes then converting to
+        // buckets as we assume the bucket is the unit of file allocation.
+
+        // Get a list of all the users files
+        const files = this.owner.catalogue(false)
+
+        // Map each filename into its size in buckets and sum the sizes
+        const buckets = files.map((filename) => {
+            const info = this.owner.fileInfo(false, filename)
+            return info["buckets"]
+        }).reduce((a, b) => a + b)
+
+        this.disc = buckets
+    }
+}

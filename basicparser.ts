@@ -65,6 +65,7 @@ class BasicParser
             || InputStmt.parse(scanner)
             || LetStmt.parse(scanner)
             || PrintStmt.parse(scanner)
+            || ReturnStmt.parse(scanner)
             || NLetStmt.parseNLet(false, scanner)
             || SLetStmt.parseSLet(false, scanner)
         /*
@@ -81,7 +82,6 @@ class BasicParser
             || ReadStmt.parseRead(scanner, out statement)
             || RemStmt.parseRem(scanner, out statement)
             || RestoreStmt.parseRestore(scanner, out statement)
-            || ReturnStmt.parseReturn(scanner, out statement);
             */
     }
 
@@ -144,6 +144,9 @@ class BasicParser
             console.log("got ? eoc=" + scanner.atEol())
             return this.eoc(scanner, new QuestionCmd())
         }
+        else if (scanner.consumeCommand("ACC")) {
+            return this.eoc(scanner, new AccountCmd());
+        }
         else if (scanner.consumeCommand("BYE")) {
             return this.eoc(scanner, new ByeCmd)
         }
@@ -152,6 +155,9 @@ class BasicParser
         }
         else if (scanner.consumeCommand("DAT")) {
             return this.eoc(scanner, DateCmd.parse(scanner));
+        }
+        else if (scanner.consumeCommand("DIS")) {
+            return this.eoc(scanner, new DiscCmd());
         }
         else if (scanner.consumeCommand("LEN")) {
             return this.eoc(scanner, LengthCmd.parse(scanner));
@@ -180,10 +186,6 @@ class BasicParser
         return ErrorCode.CommandNotRecognised
     }
         /*
-        else if (scanner.consume_command("ACC"))
-        {
-            return eoc(scanner, new AccountCmd());
-        }
         else if (scanner.consume_command("CON"))
         {
             return eoc(scanner, ContinueCmd.parse(scanner));
@@ -191,10 +193,6 @@ class BasicParser
         else if (scanner.consume_command("DEL"))
         {
             return eoc(scanner, DeleteCmd.parse(scanner));
-        }
-        else if (scanner.consume_command("DIS"))
-        {
-            return eoc(scanner, new DiscCmd());
         }
         else if (scanner.consume_command("GET")
                 || scanner.consume_command("OLD"))
