@@ -6,8 +6,7 @@ class BasicParser
     private error: ErrorCode
 
     constructor () {
-        this.error = new ErrorCode()
-        this.error.set(ErrorCode.NoError)
+        ErrorCode.set(ErrorCode.NoError)
     }
 
 /*
@@ -28,7 +27,7 @@ class BasicParser
         }
         else {
             // The parser should have set an error
-            if (this.error.get() == ErrorCode.NoError)
+            if (ErrorCode.get() == ErrorCode.NoError)
             {
                 return ErrorCode.BugCheck
             }
@@ -48,14 +47,14 @@ class BasicParser
                 return ErrorCode.CharacterAfterStatement
             }
         }
-        else if (this.error.get() == ErrorCode.NoError){
+        else if (ErrorCode.get() == ErrorCode.NoError){
             // We didn't recognise a statement and
             return ErrorCode.StatementNotRecognised
         }
         else {
             // We recognised the statement but it ddn't parse correctly and
             // we have already set an error
-            return this.error.get();
+            return ErrorCode.get();
         }
     }
 
@@ -92,7 +91,7 @@ class BasicParser
         const statement = this.parseStatement(scanner)
         if (statement == undefined) {
 
-            this.error.set(ErrorCode.StatementNotRecognised)
+            ErrorCode.set(ErrorCode.StatementNotRecognised)
             return null;
         }
 
@@ -105,7 +104,7 @@ class BasicParser
 
         if (!scanner.consumeSymbol(TokenType.SEP)) {
             // No separator - this text is unexpected
-            this.error.set(ErrorCode.CharacterAfterStatement)
+            ErrorCode.set(ErrorCode.CharacterAfterStatement)
             return null;
         }
 
@@ -133,7 +132,7 @@ class BasicParser
                 return new LineCmd(lineNo, statementSeq);
             }
             else {
-                return this.error.get();
+                return ErrorCode.get();
             }
         }
     }
@@ -158,6 +157,10 @@ class BasicParser
         }
         else if (scanner.consumeCommand("DIS")) {
             return this.eoc(scanner, new DiscCmd());
+        }
+        else if (scanner.consumeCommand("GET")
+                || scanner.consumeCommand("OLD")) {
+            return this.eoc(scanner, GetCmd.parse(scanner));
         }
         else if (scanner.consumeCommand("LEN")) {
             return this.eoc(scanner, LengthCmd.parse(scanner));
@@ -193,11 +196,6 @@ class BasicParser
         else if (scanner.consume_command("DEL"))
         {
             return eoc(scanner, DeleteCmd.parse(scanner));
-        }
-        else if (scanner.consume_command("GET")
-                || scanner.consume_command("OLD"))
-        {
-            return eoc(scanner, GetCmd.parse(scanner));
         }
         else if (scanner.consume_command("KIL")
                 || scanner.consume_command("UNS"))
@@ -242,7 +240,7 @@ class BasicParser
 */
     public parse(line : string) : ASTNode | string | undefined {
 
-        let scanner = new Scanner(line, this.error);
+        let scanner = new Scanner(line);
 
         //int lineNo;
 
@@ -280,8 +278,8 @@ class BasicParser
                 // We didn't parse a statement. If an error is set, it means
                 // we started to parse a statement so it can't be a command
                 // otherwise, if no error is set, try a command.
-                if (this.error.get() != ErrorCode.NoError) {
-                    return this.error.get();
+                if (ErrorCode.get() != ErrorCode.NoError) {
+                    return ErrorCode.get();
                 }
                 else {
                     return this.parseCommand(scanner);

@@ -5,7 +5,7 @@
 abstract class ASTNode {
 
     protected static fail(scanner: Scanner, code: string, mark: number) : ASTNode {
-        //ErrorCode.set(code);
+        ErrorCode.set(code)
         if (mark != undefined) scanner.restore(mark);
         return null
     }

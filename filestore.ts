@@ -21,6 +21,16 @@ class FileStore
         this.onlineButton.checked = this.recentlyOnline;
     }
 
+    protected infoKey(isLibrary: boolean, filename: string) : string {
+        const name = isLibrary ? "LIBRY" : this.username
+        return "FILE_INFO_" + name + "_" + filename
+    }
+
+    protected dataKey(isLibrary: boolean, filename: string) : string {
+        const name = isLibrary ? "LIBRY" : this.username
+        return "FILE_DATA_" + name + "_" + filename
+    }
+
     public initialise() {
 
         // Clear the file store log
@@ -84,8 +94,8 @@ class FileStore
             }
             else
             {
-                sessionStorage["FILE_INFO_" + user + "_" + filename] = timestamp
-                sessionStorage["FILE_DATA_" + user + "_" + filename] = content
+                sessionStorage[this.infoKey(false, filename)] = timestamp
+                sessionStorage[this.dataKey(false, filename)] = content
                 this.log("   FILE " + user + " " + filename)
             }
         }
@@ -158,18 +168,15 @@ class FileStore
     }
 
     public fileInfo(isLibrary: boolean, path: string) : any {
-        const name = isLibrary ? "LIBRY" : this.username
 
         // Currently, the onlyt thing the info holds is the timestemp in
         // the format ddmmyyyyhhmmss.
-        const infoKey = "FILE_INFO_" + name + "_" + path
-        const info = sessionStorage[infoKey]
+        const info = sessionStorage[this.infoKey(isLibrary, path)]
         const timestamp = info.substring(0,2) + "/" + info.substring(2,4) + "/" + info.substring(6, 8)
 
         // Get the contents of the file so we can calculate its size and
         // retrieve its file format &c
-        const dataKey = "FILE_DATA_" + name + "_" + path
-        const data = sessionStorage[dataKey]
+        const data = sessionStorage[this.dataKey(isLibrary, path)]
 
         // This seems to be an approximation to the size of the file in
         // bucket on the real system.
@@ -186,12 +193,7 @@ class FileStore
     }
 
     public exists(isLibrary: boolean, filename: string) {
-        const name = isLibrary ? "LIBRY" : this.username
-
-        // Currently, the onlyt thing the info holds is the timestemp in
-        // the format ddmmyyyyhhmmss.
-        const infoKey = "FILE_INFO_" + name + "_" + filename
-        return infoKey in sessionStorage
+       return this.infoKey(isLibrary, filename) in sessionStorage
     }
 
     public saveTerminalFile(isLibrary: boolean, filename: string, type: string, access: string, contents: string[]) {
@@ -200,8 +202,15 @@ class FileStore
         // The file header
     }
 
-    public getTerminalFile(username: string, filename: string) : string[] {
-        return []
+    public getTerminalFile(isLibrary: boolean, filename: string) : string[] {
+
+        if (!this.exists(isLibrary, filename)) return null
+
+        // The first line contains the file info and isn't to be returned
+        // (they get that information via the fileInfo call). We just return
+        // a list of the records in the file
+        const data = sessionStorage[this.dataKey(isLibrary, filename)]
+        return data.split("\n").slice(1)
     }
 
     perform(message: string, callback : (request: XMLHttpRequest) => void) : void

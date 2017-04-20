@@ -38,6 +38,9 @@ class Program {
     public get name() { return this.name_ }
     public set name(name: string) { this.name_ = name }
 
+    // Is this a data file rather than a basic program?
+    public isData: boolean
+
     // The I/O channels as seen by this program. Channel 0 is the tty
     protected _channels: Channels
     public get channels() { return this._channels; }
@@ -54,6 +57,7 @@ class Program {
         this.continuable = false
         this._state = ProgramState.Stopped
         this.name_ = ""
+        this.isData = false
         this.udf = {}
         this.staleLineMap = true
 
