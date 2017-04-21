@@ -58,9 +58,10 @@ class BasicParser
         }
     }
 
-    public parseStatement(scanner: Scanner) : Statement | undefined {
+    public static parseStatement(scanner: Scanner) : Statement | undefined {
         return EndStmt.parse(scanner)
             || GoBase.parse(scanner)
+            || IfStmt.parse(scanner)
             || InputStmt.parse(scanner)
             || LetStmt.parse(scanner)
             || PrintStmt.parse(scanner)
@@ -73,7 +74,6 @@ class BasicParser
             || DimStmt.parseDim(scanner, out statement)
             || ForStmt.parseFor(scanner, out statement)
             || LinputStmt.parseLinput(scanner, out statement)
-            || IfStmt.parseIf(scanner, out statement)
             || StopStmt.parseStop(scanner, out statement)
             || MarginStmt.parse(scanner, out statement)
             || NextStmt.parseNext(scanner, out statement)
@@ -88,7 +88,7 @@ class BasicParser
 
         // We must have at least one statement next. If we fail, then
         // return its syntax error
-        const statement = this.parseStatement(scanner)
+        const statement = BasicParser.parseStatement(scanner)
         if (statement == undefined) {
 
             ErrorCode.set(ErrorCode.StatementNotRecognised)
@@ -137,6 +137,22 @@ class BasicParser
         }
     }
 
+    /**
+     * Attempt to parse a command line
+     *
+     * Positioned at the start of a line of text, attempt to parse a command
+     * and if successful, return the resulting object ready for execution.
+     * If we fail, return an error indicating the command was not recognised.
+     *
+     * Because all commands can be identified by the first token on the line,
+     * switch on that token to that parser that parses the rest of its command.
+     *
+     * Once a command parser returns its resulr, we call eoc to ensure there
+     * are no tokens following the command. If there are, eoc will return
+     * an appropriate error instead of the command object.
+     *
+     * @param scanner
+     */
     public parseCommand(scanner: Scanner) : ASTNode {
 
         if (scanner.consumeCommand("?")) {
@@ -194,7 +210,6 @@ class BasicParser
             return this.eoc(scanner, ListCmd.parse(scanner));
         }
 
-
         return ErrorCode.CommandNotRecognised
     }
         /*
@@ -250,7 +265,7 @@ class BasicParser
         else
         {
             // Not an edit so try for a statement first.
-            const stmt = this.parseStatement(scanner)
+            const stmt = BasicParser.parseStatement(scanner)
 
             if (stmt instanceof (Statement)) {
 
