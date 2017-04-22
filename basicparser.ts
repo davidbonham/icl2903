@@ -68,6 +68,7 @@ class BasicParser
             || LetStmt.parse(scanner)
             || NextStmt.parse(scanner)
             || PrintStmt.parse(scanner)
+            || RandomiseStmt.parse(scanner)
             || RemStmt.parse(scanner)
             || ReturnStmt.parse(scanner)
             || StopStmt.parse(scanner)
@@ -78,7 +79,6 @@ class BasicParser
             || DataStmt.parseData(scanner, out statement)
             || LinputStmt.parseLinput(scanner, out statement)
             || MarginStmt.parse(scanner, out statement)
-            || RandomiseStmt.parseRandomise(scanner, out statement)
             || ReadStmt.parseRead(scanner, out statement)
             || RestoreStmt.parseRestore(scanner, out statement)
             */
