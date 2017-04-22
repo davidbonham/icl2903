@@ -65,9 +65,31 @@ class Program {
         this._channels.set(0, new TTYChannel(session))
     }
 
+    /**
+     * Convert an index in the contents array to its line number
+     *
+     * Because we expand statement sequences into individial statements
+     * before execution, we scale line numbers by 100 to allow these to
+     * be stored between lines:
+     *
+     * 10 A=1!B=2!c=3       =>    1000 A=1
+     * 99 END                     1001 B=1
+     *                            1001 C=2
+     *                            9900 END
+     *
+     * Map the index we are given into its owning line number
+     *
+     * @param index
+     */
     protected static indexToLine(index: number) : number {
         return Math.floor(index / 100)
     }
+
+    /**
+     * Convert a line number into its statement index in the contents array
+     *
+     * @param line a line number in the range 1..9999
+     */
     protected static lineToIndex(line: number) : number {
         return line*100
     }
@@ -284,6 +306,48 @@ class Program {
         }
     }
 
+    /**
+     * Find the NEXT statement matching this FOR.
+     *
+     * Advance from the current statement (which is expected to be a FOR)
+     * until we find a NEXT (which ought to match it). We return the statement
+     * number so that the caller can transfer control to it. When it is
+     * executed, we will discover if there is a problem
+     *
+     * We need to deal in statement indices rather than line numbers so
+     * that the following will work:
+     *
+     * 10 FOR I=1 TO 10!PRINT I!NEXT I
+     *
+     * @param forStmt index of the for statement in our contents
+     * @param index   the refernce to the loop index variable
+     */
+    public findNext(forStmt: number, index: NScalarRef) : number {
+
+        // Iterate over the expanded statement in line number order
+        let nextIndex = forStmt
+        for (let nextIndex = forStmt; nextIndex != 0; nextIndex = this.nextStatementIndex(nextIndex)) {
+
+            let statement: Statement = this.contents[nextIndex]
+
+            // Deal with statement sequences by inspecting only the first
+            if (statement instanceof SequenceStmt) {
+                statement = statement.statement
+            }
+
+            // If this is a NEXT statement specifying the same variable,
+            // we have found the answer
+            if (statement instanceof NextStmt) {
+                if (statement.index.same(index)) {
+                    return nextIndex
+                }
+            }
+        }
+
+        // We didn't find a next after this for
+        throw new Utility.RunTimeError(ErrorCode.ForUnmatched)
+    }
+
     public run(line: number, context: Context, run: boolean) : void {
         if (this.lineCount() == 0) {
             this.session.println("NO PROGRAM");
@@ -352,7 +416,6 @@ class Program {
         try {
 
             if (this._state == ProgramState.Running) {
-                wto("stepping to next index " + context.nextStmtIndex)
                 context.stmtIndex = context.nextStmtIndex
 
                 if (this.contents[context.stmtIndex] == undefined) throw new Utility.RunTimeError("CALLED LINE NUMBER DOES NOT EXIST");
@@ -365,13 +428,12 @@ class Program {
                 // Set up the default action of advancing to the next statement
                 // in the context.
                 context.nextStmtIndex = this.nextStatementIndex(context.stmtIndex)
-                wto("setting its next to " + context.nextStmtIndex)
 
                 // Execute the current statement
+                wto("index=" + context.stmtIndex + ": " + this.contents[context.stmtIndex].source())
                 this.contents[context.stmtIndex].execute(context)
             }
             else {
-                wto("received data for input")
                 // Input has been provided for the current input statement
                 const more = this.inputHandler(line)
                 this._state = more ? ProgramState.Input : this._oldState

@@ -60,10 +60,12 @@ class BasicParser
 
     public static parseStatement(scanner: Scanner) : Statement | undefined {
         return EndStmt.parse(scanner)
+            || ForStmt.parse(scanner)
             || GoBase.parse(scanner)
             || IfStmt.parse(scanner)
             || InputStmt.parse(scanner)
             || LetStmt.parse(scanner)
+            || NextStmt.parse(scanner)
             || PrintStmt.parse(scanner)
             || RemStmt.parse(scanner)
             || ReturnStmt.parse(scanner)
@@ -74,10 +76,8 @@ class BasicParser
         return ChangeStmt.parseChange(scanner, out statement)
             || DataStmt.parseData(scanner, out statement)
             || DimStmt.parseDim(scanner, out statement)
-            || ForStmt.parseFor(scanner, out statement)
             || LinputStmt.parseLinput(scanner, out statement)
             || MarginStmt.parse(scanner, out statement)
-            || NextStmt.parseNext(scanner, out statement)
             || RandomiseStmt.parseRandomise(scanner, out statement)
             || ReadStmt.parseRead(scanner, out statement)
             || RestoreStmt.parseRestore(scanner, out statement)
