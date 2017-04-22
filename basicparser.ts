@@ -65,7 +65,9 @@ class BasicParser
             || InputStmt.parse(scanner)
             || LetStmt.parse(scanner)
             || PrintStmt.parse(scanner)
+            || RemStmt.parse(scanner)
             || ReturnStmt.parse(scanner)
+            || StopStmt.parse(scanner)
             || NLetStmt.parseNLet(false, scanner)
             || SLetStmt.parseSLet(false, scanner)
         /*
@@ -74,12 +76,10 @@ class BasicParser
             || DimStmt.parseDim(scanner, out statement)
             || ForStmt.parseFor(scanner, out statement)
             || LinputStmt.parseLinput(scanner, out statement)
-            || StopStmt.parseStop(scanner, out statement)
             || MarginStmt.parse(scanner, out statement)
             || NextStmt.parseNext(scanner, out statement)
             || RandomiseStmt.parseRandomise(scanner, out statement)
             || ReadStmt.parseRead(scanner, out statement)
-            || RemStmt.parseRem(scanner, out statement)
             || RestoreStmt.parseRestore(scanner, out statement)
             */
     }

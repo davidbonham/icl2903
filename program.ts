@@ -65,6 +65,13 @@ class Program {
         this._channels.set(0, new TTYChannel(session))
     }
 
+    protected static indexToLine(index: number) : number {
+        return Math.floor(index / 100)
+    }
+    protected static lineToIndex(line: number) : number {
+        return line*100
+    }
+
     public dump() {
         wto("program name=" + this.name_ + " continuable=" + this.continuable + " contents size=" + this.statementCount())
         this.contents.forEach(
@@ -90,7 +97,7 @@ class Program {
         this._channels.closeChannels()
 
         // Now display the interrupt on the session tty.
-        this.session.println("LINE " + (context.stmtIndex/100) + " BREAK IN" )
+        this.session.println("LINE " + Program.indexToLine(context.stmtIndex) + " BREAK IN" )
         this._state = ProgramState.Interrupted
     }
 
@@ -125,8 +132,8 @@ class Program {
     public lines(from: number, to: number) : Statement[] {
 
         // Convert line numbers to indices
-        const low = from*100
-        const high = to*100
+        const low = Program.lineToIndex(from)
+        const high = Program.lineToIndex(to)
 
         // Return statements in the range ignoring statement sequence
         // expansions. Convert indices to line numbers
@@ -134,7 +141,7 @@ class Program {
         this.contents.forEach(
             (statement : Statement, index: number) => {
                 if (low <= index && index <= high && (index % 100) == 0) {
-                    result[index/100] = statement
+                    result[Program.indexToLine(index)] = statement
                 }
             }
         )
@@ -153,12 +160,12 @@ class Program {
 
         // Simple statements can be inserted immediately but sequences must
         // be expanded
-        this.contents[lineNo*100] = statement
+        this.contents[Program.lineToIndex(lineNo)] = statement
 
         if (statement instanceof SequenceStmt) {
             let offset = 1
             for (let node : SequenceStmt = statement.next; node != null; node = node.next) {
-                this.contents[lineNo*100+offset] = node.statement
+                this.contents[Program.lineToIndex(lineNo)+offset] = node.statement
                 offset++
             }
         }
@@ -173,8 +180,8 @@ class Program {
 
         // We have been given line numbers so convert these to the largest
         // range of indices
-        const low = from * 100
-        const high = to*100 + 99
+        const low = Program.lineToIndex(from)
+        const high = Program.lineToIndex(to+1) - 1
 
         // Keep lines not in that range
         let result : Statement[] = []
@@ -198,7 +205,6 @@ class Program {
 
         // Fast check for next statement on this line
         if (this.contents[index+1] != undefined) {
-            console.log("nextStatementIndex " + index + "->" + (index+1))
             return index+1
         }
 
@@ -211,7 +217,7 @@ class Program {
                 if ((index % 100) == 0) {
                     // This is the start of a statement. If there was a previous
                     // line, set its map entry to this line
-                    const line = index / 100
+                    const line = Program.indexToLine(index)
                     this.nextLineMap[previousLineNumber] = line
                     previousLineNumber = line
                 }
@@ -226,7 +232,7 @@ class Program {
 
         // Get the next line number and convert it into its index
         console.log("nextStatementIndex " + index + "->" + (this.nextLineMap[index/100] * 100))
-        return this.nextLineMap[index/100] * 100
+        return Program.lineToIndex(this.nextLineMap[Program.indexToLine(index)])
     }
 
     protected closeChannels() : void {
@@ -257,7 +263,7 @@ class Program {
                 // the expanded statement
                 if (this.contents[index] instanceof EndStmt) return
 
-                throw new Utility.RunTimeError(ErrorCode.NoEnd, index / 100)
+                throw new Utility.RunTimeError(ErrorCode.NoEnd, Program.indexToLine(index))
             }
         }
     }
@@ -271,7 +277,7 @@ class Program {
         // We're going to run the program so prepare data, dimensions &c. Any errors
         // need up be update to specify the current line number
         try {
-            this.contents.forEach((value, index) => value.prepare(context, index/100))
+            this.contents.forEach((value, index) => value.prepare(context, Program.indexToLine(index)))
         }
         catch (e) {
             throw new Utility.RunTimeError(e.error, e.index);
@@ -297,7 +303,7 @@ class Program {
                 }
                 else {
                     // Continue from the specified line or the next if none specified
-                    context.stmtIndex = line == 0 ? context.nextStmtIndex : line*100
+                    context.stmtIndex = line == 0 ? context.nextStmtIndex : Program.lineToIndex(line)
                 }
 
 
@@ -394,7 +400,7 @@ class Program {
 
             // Now display the error on the session tty.
             result = e.error
-            this.session.println("LINE " + (context.stmtIndex/100) + " " + e.error)
+            this.session.println("LINE " + Program.indexToLine(context.stmtIndex) + " " + e.error)
             this._state = ProgramState.Interrupted
         }
 
