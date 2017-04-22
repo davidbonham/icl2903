@@ -95,18 +95,39 @@ def order_js(sources):
 
 def pack(sources, target):
 
+    # Concatenate all of the files in order, keeping a record of the line
+    # at which each starts
+
     order = order_js(sources)
+    index = {}
+
+    next_line = 1
+    concatenation = ""
+    for source in order:
+
+        concatenation += '// -- ' + source + ' --\n'
+        index[source] = next_line + 1
+
+        with open(source, 'r') as input:
+
+            new_source = input.read()
+            concatenation += new_source
+            next_line += new_source.count('\n') + 1
+
+    # Write out the dictionary
+    first_line = 5 + len(index)
+    longest_source = max([len(x) for x in index.keys()])
+    dictionary_format = '// | %%%ds | %%5d |' % longest_source
     with open(target, 'w') as output:
         print >>output, '// Packed in order:'
         print >>output, '//'
+        print >>output, '// +-%s-+-------+' % ('-'*longest_source)
         for source in order:
-            print >>output, '//', source
-        print >>output, '// ----------\n'
+            print >>output, dictionary_format % (source, index[source]+first_line)
+        print >>output, '// +-%s-+-------+' % ('-'*longest_source)
+        print >>output, '\n'
+        print >>output, concatenation
 
-        for source in order:
-            with open(source, 'r') as input:
-                print >>output, '// --', source, '--'
-                print >>output, input.read()
 
 
 
