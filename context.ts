@@ -270,7 +270,7 @@ class Context {
         const index = Math.floor(col + 0.5) * (array.colBound + 1) + Math.floor(row + 0.5)
 
         // It must exist
-        if (!(index in this.sarray.elements)) throw new Utility.RunTimeError(ErrorCode.UnassignedString)
+        if (!(index in array.elements)) throw new Utility.RunTimeError(ErrorCode.UnassignedString)
 
         return array.elements[index]
     }

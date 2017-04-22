@@ -59,7 +59,8 @@ class BasicParser
     }
 
     public static parseStatement(scanner: Scanner) : Statement | undefined {
-        return EndStmt.parse(scanner)
+        return DimStmt.parse(scanner)
+            || EndStmt.parse(scanner)
             || ForStmt.parse(scanner)
             || GoBase.parse(scanner)
             || IfStmt.parse(scanner)
@@ -75,7 +76,6 @@ class BasicParser
         /*
         return ChangeStmt.parseChange(scanner, out statement)
             || DataStmt.parseData(scanner, out statement)
-            || DimStmt.parseDim(scanner, out statement)
             || LinputStmt.parseLinput(scanner, out statement)
             || MarginStmt.parse(scanner, out statement)
             || RandomiseStmt.parseRandomise(scanner, out statement)
