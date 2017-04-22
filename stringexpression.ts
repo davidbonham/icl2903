@@ -51,6 +51,10 @@ abstract class SFunction extends StringExpression
         return (index < 0) ? s1 : (s1.slice(0, index) + s1.slice(index + s2.length))
     }
 
+    protected static DEL1(s1: string, s2: string) : string {
+        return SFunction.DEL(s1, s2, 1)
+    }
+
     protected static GAP(n : number) : string {
         return SFunction.MUL(' ', n)
     }
@@ -75,6 +79,10 @@ abstract class SFunction extends StringExpression
         return s1.slice(0, index) + s3 + s1.slice(index + s2.length)
     }
 
+    protected static REP1(s1: string, s2: string, s3: string) : string {
+        return SFunction.REP(s1, s2, s3, 1)
+    }
+
 
     protected static SDL(s1: string, s2: string, n: number = 0) : string {
 
@@ -90,6 +98,10 @@ abstract class SFunction extends StringExpression
             todo -= 1;
         }
         return result;
+    }
+
+    protected static SDL0(s1: string, s2: string) : string {
+        return SFunction.SDL(s1, s2, 0)
     }
 
     protected static SEG1(s: string, n1: number) : string {
@@ -128,6 +140,11 @@ abstract class SFunction extends StringExpression
         return newstring
     }
 
+    protected static SRP0(s1: string, s2: string, s3: string) : string {
+        return SFunction.SRP(s1, s2, s3, 0)
+    }
+
+
     protected static SUB1(s1: string, n: number) : string {
         if (n < 0 || s1.length - 1 < n) throw new Utility.RunTimeError(ErrorCode.InvArg)
         return s1[n-1]
@@ -147,91 +164,80 @@ abstract class SFunction extends StringExpression
         return Utility.basicTime(new Date)
     }
 
+
     public static parseFunction(scanner: Scanner) : StringExpression {
 
         const start_mark = scanner.mark()
         let result : SFunction = null
 
         if (scanner.consumeBifs("CHR$"))
-            result = FofN$.parseFofN(scanner, "CHR$", SFunction.CHR)
-            /*
+            result = FofN$.parseFofN$(scanner, "CHR$", SFunction.CHR)
         else if (scanner.consumeBifs("DAT$"))
-            result = FofX.parse(scanner, "DAT$", new FofX_Imp(DAT), out sfunc);
-        else if (scanner.consume_bifs("DEL$"))
-        {
+            result = FofX$.parseFofX$(scanner, "DAT$", SFunction.DAT)
+        else if (scanner.consumeBifs("DEL$")) {
             var mark = scanner.mark();
-            result = FofSS.parse(scanner, "DELS", new FofSS_Imp(DEL), out sfunc);
-            if (!result)
-            {
+            result = FofSS$.parseFofSS$(scanner, "DEL$", SFunction.DEL1)
+            if (!result) {
                 scanner.restore(mark);
-                result = FofSSN.parse(scanner, "DEL$", new FofSSN_Imp(DEL), out sfunc);
+                result = FofSSN$.parseFofSSN$(scanner, "DEL$", SFunction.DEL)
             }
         }
-        else if (scanner.consume_bifs("DEL$"))
-            result = FofSS.parse(scanner, "DEL$", new FofSS_Imp(DEL), out sfunc);
-        else if (scanner.consume_bifs("GAP$"))
-            result = FofN.parse(scanner, "GAP$", new FofN_Imp(GAP), out sfunc);
-        else if (scanner.consume_bifs("LIN$"))
-            result = FofN.parse(scanner, "LIN$", new FofN_Imp(LIN), out sfunc);
-        else if (scanner.consume_bifs("MUL$"))
-            result = FofSN.parse(scanner, "MUL$", new FofSN_Imp(MUL), out sfunc);
-        else if (scanner.consume_bifs("REP$"))
+        else if (scanner.consumeBifs("GAP$"))
+            result = FofN$.parseFofN$(scanner, "GAP$", SFunction.GAP)
+        else if (scanner.consumeBifs("LIN$"))
+            result = FofN$.parseFofN$(scanner, "LIN$", SFunction.LIN)
+        else if (scanner.consumeBifs("MUL$"))
+            result = FofSN$.parseFofSN$(scanner, "MUL$", SFunction.MUL);
+        else if (scanner.consumeBifs("REP$"))
         {
             var mark = scanner.mark();
-            result = FofSSS.parse(scanner, "REP$", new FofSSS_Imp(REP), out sfunc);
+            result = FofSSS$.parseFofSSS$(scanner, "REP$", SFunction.REP1)
             if (!result)
             {
                 scanner.restore(mark);
-                result = FofSSSN.parse(scanner, "REP$", new FofSSSN_Imp(REP), out sfunc);
+                result = FofSSSN$.parseFofSSSN$(scanner, "REP$", SFunction.REP)
             }
         }
-        else if (scanner.consume_bifs("SDL$"))
-        {
+        else if (scanner.consumeBifs("SDL$")) {
             var mark = scanner.mark();
-            result = FofSS.parse(scanner, "SDL$", new FofSS_Imp(SDL), out sfunc);
+            result = FofSS$.parseFofSS$(scanner, "SDL$", SFunction.SDL0)
             if (!result)
             {
                 scanner.restore(mark);
-                result = FofSSN.parse(scanner, "SDL$", new FofSSN_Imp(SDL), out sfunc);
+                result = FofSSN$.parseFofSSN$(scanner, "SDL$", SFunction.SDL)
             }
         }
-        else if (scanner.consume_bifs("SEG$"))
-        {
+        else if (scanner.consumeBifs("SEG$")) {
             var mark = scanner.mark();
-            result = FofSN.parse(scanner, "SEG$", new FofSN_Imp(SEG), out sfunc);
+            result = FofSN$.parseFofSN$(scanner, "SEG$", SFunction.SEG1)
             if (!result)
             {
                 scanner.restore(mark);
-                result = FofSNN.parse(scanner, "SEG$", new FofSNN_Imp(SEG), out sfunc);
+                result = FofSNN$.parseFofSNN$(scanner, "SEG$", SFunction.SEG2)
             }
         }
-        else if (scanner.consume_bifs("SGN$"))
-            result = FofN.parse(scanner, "SGN$", new FofN_Imp(SGN), out sfunc);
-        else if (scanner.consume_bifs("SRP$"))
-        {
+        else if (scanner.consumeBifs("SGN$"))
+            result = FofN$.parseFofN$(scanner, "SGN$", SFunction.SGN)
+        else if (scanner.consumeBifs("SRP$")) {
             var mark = scanner.mark();
-            result = FofSSS.parse(scanner, "SRP$", new FofSSS_Imp(SRP), out sfunc);
-            if (!result)
-            {
+            result = FofSSS$.parseFofSSS$(scanner, "SRP$", SFunction.SRP0)
+            if (!result) {
                 scanner.restore(mark);
-                result = FofSSSN.parse(scanner, "SRP$", new FofSSSN_Imp(SRP), out sfunc);
+                result = FofSSSN$.parseFofSSSN$(scanner, "SRP$", SFunction.SRP)
             }
         }
-        else if (scanner.consume_bifs("STR$"))
-            result = FofN.parse(scanner, "STR$", new FofN_Imp(STR), out sfunc);
-        else if (scanner.consume_bifs("SUB$"))
-        {
+        else if (scanner.consumeBifs("STR$"))
+            result = FofN$.parseFofN$(scanner, "STR$", SFunction.STR)
+        else if (scanner.consumeBifs("SUB$")) {
             var mark = scanner.mark();
-            result = FofSN.parse(scanner, "SUB$", new FofSN_Imp(SUB), out sfunc);
-            if (!result)
-            {
+            result = FofSN$.parseFofSN$(scanner, "SUB$", SFunction.SUB1)
+            if (!result) {
                 scanner.restore(mark);
-                result = FofSNN.parse(scanner, "SUB$", new FofSNN_Imp(SUB), out sfunc);
+                result = FofSNN$.parseFofSNN$(scanner, "SUB$", SFunction.SUB2)
             }
         }
         else if (scanner.consumeBifs("TIM$"))
-            result = FofX.parse(scanner, "TIM$", new FofX_Imp(TIM), out sfunc);
-*/
+            result = FofX$.parseFofX$(scanner, "TIM$", SFunction.TIM)
         if (result == null) scanner.restore(start_mark);
         return result
     }
@@ -254,353 +260,213 @@ class FofN$ extends SFunction
         return this.name + '(' + this.op.source() + ')'
     }
 
-    public static parseFofN(scanner: Scanner, name: string, func: (n:number) => string) : FofN$ {
-
-        let op: NumericExpression
-        if (scanner.consumeSymbol(TokenType.PAR)
-        && (op = NumericExpression.parse(scanner))
-        && scanner.consumeSymbol(TokenType.REN)) {
-            return new FofN$(name, func, op)
-        }
-
-        return null
+    public static parseFofN$(scanner: Scanner, name: string, func: (n:number) => string) : FofN$ {
+        const args = Expression.parseArgList(scanner, "N")
+        return args ? new FofN$(name, func, <NumericExpression>args[0]) : null
     }
 }
 
-/*
-        protected class FofSS : SFunction
-        {
-            protected string _name;
-            protected StringExpression _s1;
-            protected StringExpression _s2;
-            protected FofSS_Imp _imp;
+class FofX$ extends SFunction {
 
-            public FofSS(string name, FofSS_Imp imp, StringExpression s1, StringExpression s2)
-            {
-                _name = name;
-                _imp = imp;
-                _s1 = s1;
-                _s2 = s2;
-            }
+    public constructor(protected readonly name: string, protected readonly func: () => string) {
+        super()
+    }
 
-            public override string value(Context context)
-            {
-                string s1 = _s1.value(context);
-                string s2 = _s2.value(context);
-                return _imp(s1, s2);
-            }
+    public value(context: Context) : string {
+        return this.func()
+    }
 
-            public override string source()
-            {
-                return _name + '(' + _s1.source() + ',' + _s2.source() + ')';
-            }
+    public source() : string {
+        return this.name
+    }
 
-            public static bool parse(Scanner scanner, string name, FofSS_Imp imp, out SFunction tree)
-            {
-                StringExpression s1;
-                StringExpression s2;
-                if (scanner.consume_symbol(Scanner.TokenType.PAR)
-                    && StringExpression.parse(scanner, out s1)
-                    && scanner.consume_symbol(Scanner.TokenType.COMMA)
-                    && StringExpression.parse(scanner, out s2)
-                    && scanner.consume_symbol(Scanner.TokenType.REN))
-                {
-                    tree = new FofSS(name, imp, s1, s2);
-                    return true;
-                }
+    public static parseFofX$(scanner: Scanner, name: string, func: () => string) : FofX$ {
+        return new FofX$(name, func);
+    }
+}
 
-                tree = null;
-                return false;
-            }
-        }
+class FofSS$ extends SFunction {
 
-        protected class FofSSS : SFunction
-        {
-            protected string _name;
-            protected StringExpression _s1;
-            protected StringExpression _s2;
-            protected StringExpression _s3;
-            protected FofSSS_Imp _imp;
+    public constructor(protected readonly name: string,
+                       protected readonly func: (s1: string, s2: string) => string,
+                       protected readonly s1: StringExpression,
+                       protected readonly s2: StringExpression) {
+        super()
+    }
 
-            public FofSSS(string name, FofSSS_Imp imp, StringExpression s1, StringExpression s2, StringExpression s3)
-            {
-                _name = name;
-                _imp = imp;
-                _s1 = s1;
-                _s2 = s2;
-                _s3 = s3;
-            }
+    public value(context: Context) : string {
+        const s1 = this.s1.value(context)
+        const s2 = this.s2.value(context)
+        return this.func(s1, s2)
+    }
 
-            public override string value(Context context)
-            {
-                string s1 = _s1.value(context);
-                string s2 = _s2.value(context);
-                string s3 = _s3.value(context);
-                return _imp(s1, s2, s3);
-            }
+    public source() : string {
+        return this.name + '(' + this.s1.source() + ',' + this.s2.source() + ')'
+    }
 
-            public override string source()
-            {
-                return _name + '(' + _s1.source() + ',' + _s2.source() + ',' + _s3.source() + ')';
-            }
+    public static parseFofSS$(scanner: Scanner, name: string, func: (s1: string, s2: string) => string) : FofSS$ {
+        const args = Expression.parseArgList(scanner, "SS")
+        return args ? new FofSS$(name, func, <StringExpression>args[0], <StringExpression>args[1]) : null
+    }
+}
 
-            public static bool parse(Scanner scanner, string name, FofSSS_Imp imp, out SFunction tree)
-            {
-                StringExpression s1;
-                StringExpression s2;
-                StringExpression s3;
-                if (scanner.consume_symbol(Scanner.TokenType.PAR)
-                    && StringExpression.parse(scanner, out s1)
-                    && scanner.consume_symbol(Scanner.TokenType.COMMA)
-                    && StringExpression.parse(scanner, out s2)
-                    && scanner.consume_symbol(Scanner.TokenType.COMMA)
-                    && StringExpression.parse(scanner, out s3)
-                    && scanner.consume_symbol(Scanner.TokenType.REN))
-                {
-                    tree = new FofSSS(name, imp, s1, s2, s3);
-                    return true;
-                }
+class FofSSS$ extends SFunction
+{
 
-                tree = null;
-                return false;
-            }
-        }
+    public constructor(protected readonly name: string,
+                       protected readonly func: (s1: string, s2: string, s3: string) => string,
+                       protected readonly s1: StringExpression,
+                       protected readonly s2: StringExpression,
+                       protected readonly s3: StringExpression) {
+        super()
+    }
 
-        protected class FofSSN : SFunction
-        {
-            protected string _name;
-            protected StringExpression _s1;
-            protected StringExpression _s2;
-            protected NumericExpression _n;
-            protected FofSSN_Imp _imp;
+    public value(context: Context): string {
+        const s1 = this.s1.value(context)
+        const s2 = this.s2.value(context)
+        const s3 = this.s3.value(context)
+        return this.func(s1, s2, s3)
+    }
 
-            public FofSSN(string name, FofSSN_Imp imp, StringExpression s1, StringExpression s2, NumericExpression n)
-            {
-                _name = name;
-                _imp = imp;
-                _s1 = s1;
-                _s2 = s2;
-                _n = n;
-            }
+    public source() : string {
+        return this.name + '(' + this.s1.source() + ',' + this.s2.source() + ',' + this.s3.source() + ')';
+    }
 
-            public override string value(Context context)
-            {
-                string s1 = _s1.value(context);
-                string s2 = _s2.value(context);
-                double n = _n.value(context);
-                return _imp(s1, s2, n);
-            }
 
-            public override string source()
-            {
-                return _name + '(' + _s1.source() + ',' + _s2.source() + ',' + _n.source() + ')';
-            }
+    public static parseFofSSS$(scanner: Scanner, name: string, func: (s1: string, s2: string, s3: string) => string) : FofSSS$ {
+        const args = Expression.parseArgList(scanner, "SSS")
+        return args ? new FofSSS$(name, func,
+                                  <StringExpression>args[0],
+                                  <StringExpression>args[1],
+                                  <StringExpression>args[2],
+                                  ) : null
+    }
+}
 
-            public static bool parse(Scanner scanner, string name, FofSSN_Imp imp, out SFunction tree)
-            {
-                StringExpression s1;
-                StringExpression s2;
-                NumericExpression n;
-                if (scanner.consume_symbol(Scanner.TokenType.PAR)
-                    && StringExpression.parse(scanner, out s1)
-                    && scanner.consume_symbol(Scanner.TokenType.COMMA)
-                    && StringExpression.parse(scanner, out s2)
-                    && scanner.consume_symbol(Scanner.TokenType.COMMA)
-                    && NumericExpression.parse(scanner, out n)
-                    && scanner.consume_symbol(Scanner.TokenType.REN))
-                {
-                    tree = new FofSSN(name, imp, s1, s2, n);
-                    return true;
-                }
+class FofSSSN$ extends SFunction {
 
-                tree = null;
-                return false;
-            }
-        }
+    public constructor(protected readonly name: string,
+                       protected readonly func: (s1: string, s2: string, s3: string, n4: number) => string,
+                       protected readonly s1: StringExpression,
+                       protected readonly s2: StringExpression,
+                       protected readonly s3: StringExpression,
+                       protected readonly n4: NumericExpression) {
+        super()
+    }
 
-        protected class FofSSSN : SFunction
-        {
-            protected string _name;
-            protected StringExpression _s1;
-            protected StringExpression _s2;
-            protected StringExpression _s3;
-            protected NumericExpression _n;
-            protected FofSSSN_Imp _imp;
+    public value(context: Context) {
+        const s1 = this.s1.value(context)
+        const s2 = this.s2.value(context)
+        const s3 = this.s3.value(context)
+        const n4 = this.n4.value(context)
+        return this.func(s1, s2, s3, n4)
+    }
 
-            public FofSSSN(string name, FofSSSN_Imp imp, StringExpression s1, StringExpression s2, StringExpression s3, NumericExpression n)
-            {
-                _name = name;
-                _imp = imp;
-                _s1 = s1;
-                _s2 = s2;
-                _s3 = s3;
-                _n = n;
-            }
+    public source() : string {
+        return this.name + '(' + this.s1.source() + ',' + this.s2.source() + ',' + this.s3.source() + ',' + this.n4.source() + ')';
+    }
 
-            public override string value(Context context)
-            {
-                string s1 = _s1.value(context);
-                string s2 = _s2.value(context);
-                string s3 = _s3.value(context);
-                double n = _n.value(context);
-                return _imp(s1, s2, s3, n);
-            }
+    public static parseFofSSSN$(scanner: Scanner, name: string, func: (s1: string, s2: string, s3: string, n4: number) => string) : FofSSSN$ {
+        const args = Expression.parseArgList(scanner, "SSSN")
+        return args ? new FofSSSN$(name, func,
+                                   <StringExpression>args[0],
+                                   <StringExpression>args[1],
+                                   <StringExpression>args[2],
+                                   <NumericExpression>args[3],
+                                  ) : null
+    }
+}
+class FofSN$ extends SFunction {
 
-            public override string source()
-            {
-                return _name + '(' + _s1.source() + ',' + _s2.source() + ',' + _s3.source() + ',' + _n.source() + ')';
-            }
+    public constructor(protected readonly name: string,
+                       protected readonly func: (s1: string, n2: number) => string,
+                       protected readonly s1: StringExpression,
+                       protected readonly n2: NumericExpression) {
+        super()
+    }
 
-            public static bool parse(Scanner scanner, string name, FofSSSN_Imp imp, out SFunction tree)
-            {
-                StringExpression s1;
-                StringExpression s2;
-                StringExpression s3;
-                NumericExpression n;
-                if (scanner.consume_symbol(Scanner.TokenType.PAR)
-                    && StringExpression.parse(scanner, out s1)
-                    && scanner.consume_symbol(Scanner.TokenType.COMMA)
-                    && StringExpression.parse(scanner, out s2)
-                && scanner.consume_symbol(Scanner.TokenType.COMMA)
-                    && StringExpression.parse(scanner, out s3)
-                    && scanner.consume_symbol(Scanner.TokenType.COMMA)
-                    && NumericExpression.parse(scanner, out n)
-                    && scanner.consume_symbol(Scanner.TokenType.REN))
-                {
-                    tree = new FofSSSN(name, imp, s1, s2, s3, n);
-                    return true;
-                }
+    public value(context: Context) {
+        const s1 = this.s1.value(context)
+        const n2 = this.n2.value(context)
+        return this.func(s1, n2)
+    }
 
-                tree = null;
-                return false;
-            }
-        }
+    public source() : string {
+        return this.name + '(' + this.s1.source() + ',' + this.n2.source() + ')';
+    }
 
-        protected class FofSN : SFunction
-        {
-            protected string _name;
-            protected StringExpression _s;
-            protected NumericExpression _n;
-            protected FofSN_Imp _imp;
+    public static parseFofSN$(scanner: Scanner, name: string, func: (s1: string, n2: number) => string) : FofSN$ {
+        const args = Expression.parseArgList(scanner, "SN")
+        return args ? new FofSN$(name, func,
+                                 <StringExpression>args[0],
+                                 <NumericExpression>args[1],
+                                ) : null
+    }
+}
 
-            public FofSN(string name, FofSN_Imp imp, StringExpression s, NumericExpression n)
-            {
-                _name = name;
-                _imp = imp;
-                _s = s;
-                _n = n;
-            }
 
-            public override string value(Context context)
-            {
-                string s = _s.value(context);
-                double n = _n.value(context);
-                return _imp(s, n);
-            }
+class FofSSN$ extends SFunction {
 
-            public override string source()
-            {
-                return _name + '(' + _s.source() + ',' + _n.source() + ')';
-            }
+    public constructor(protected readonly name: string,
+                       protected readonly func: (s1: string, s2: string, n3: number) => string,
+                       protected readonly s1: StringExpression,
+                       protected readonly s2: StringExpression,
+                       protected readonly n3: NumericExpression) {
+        super()
+    }
 
-            public static bool parse(Scanner scanner, string name, FofSN_Imp imp, out SFunction tree)
-            {
-                StringExpression s;
-                NumericExpression n;
-                if (scanner.consume_symbol(Scanner.TokenType.PAR)
-                    && StringExpression.parse(scanner, out s)
-                    && scanner.consume_symbol(Scanner.TokenType.COMMA)
-                    && NumericExpression.parse(scanner, out n)
-                    && scanner.consume_symbol(Scanner.TokenType.REN))
-                {
-                    tree = new FofSN(name, imp, s, n);
-                    return true;
-                }
+    public value(context: Context) {
+        const s1 = this.s1.value(context)
+        const s2 = this.s2.value(context)
+        const n3 = this.n3.value(context)
+        return this.func(s1, s2, n3)
+    }
 
-                tree = null;
-                return false;
-            }
-        }
+    public source() : string {
+        return this.name + '(' + this.s1.source() + ',' + this.s2.source() + ',' + this.n3.source() + ')';
+    }
 
-        protected class FofSNN : SFunction
-        {
-            protected string _name;
-            protected StringExpression _s;
-            protected NumericExpression _n1;
-            protected NumericExpression _n2;
-            protected FofSNN_Imp _imp;
+    public static parseFofSSN$(scanner: Scanner, name: string, func: (s1: string, s2: string, n3: number) => string) : FofSSN$ {
+        const args = Expression.parseArgList(scanner, "SSN")
+        return args ? new FofSSN$(name, func,
+                                   <StringExpression>args[0],
+                                   <StringExpression>args[1],
+                                   <NumericExpression>args[2],
+                                  ) : null
+    }
+}
 
-            public FofSNN(string name, FofSNN_Imp imp, StringExpression s, NumericExpression n1, NumericExpression n2)
-            {
-                _name = name;
-                _imp = imp;
-                _s = s;
-                _n1 = n1;
-                _n2 = n2;
-            }
+class FofSNN$ extends SFunction {
 
-            public override string value(Context context)
-            {
-                string s = _s.value(context);
-                double n1 = _n1.value(context);
-                double n2 = _n2.value(context);
-                return _imp(s, n1, n2);
-            }
+    public constructor(protected readonly name: string,
+                       protected readonly func: (s1: string, n2: number, n3: number) => string,
+                       protected readonly s1: StringExpression,
+                       protected readonly n2: NumericExpression,
+                       protected readonly n3: NumericExpression) {
+        super()
+    }
 
-            public override string source()
-            {
-                return _name + '(' + _s.source() + ',' + _n1.source() + ',' + _n2.source() + ')';
-            }
+    public value(context: Context) {
+        const s1 = this.s1.value(context)
+        const n2 = this.n2.value(context)
+        const n3 = this.n3.value(context)
+        return this.func(s1, n2, n3)
+    }
 
-            public static bool parse(Scanner scanner, string name, FofSNN_Imp imp, out SFunction tree)
-            {
-                StringExpression s;
-                NumericExpression n1, n2;
-                if (scanner.consume_symbol(Scanner.TokenType.PAR)
-                    && StringExpression.parse(scanner, out s)
-                    && scanner.consume_symbol(Scanner.TokenType.COMMA)
-                    && NumericExpression.parse(scanner, out n1)
-                    && scanner.consume_symbol(Scanner.TokenType.COMMA)
-                    && NumericExpression.parse(scanner, out n2)
-                    && scanner.consume_symbol(Scanner.TokenType.REN))
-                {
-                    tree = new FofSNN(name, imp, s, n1, n2);
-                    return true;
-                }
+    public source() : string {
+        return this.name + '(' + this.s1.source() + ',' + this.n2.source() + ',' + this.n3.source() + ')';
+    }
 
-                tree = null;
-                return false;
-            }
-        }
+    public static parseFofSNN$(scanner: Scanner, name: string, func: (s1: string, n2: number, n3: number) => string) : FofSNN$ {
+        const args = Expression.parseArgList(scanner, "SNN")
+        return args ? new FofSNN$(name, func,
+                                   <StringExpression>args[0],
+                                   <NumericExpression>args[1],
+                                   <NumericExpression>args[2],
+                                  ) : null
+    }
+}
 
-        protected class FofX : SFunction
-        {
-            protected string _name;
-            protected FofX_Imp _imp;
-
-            public FofX(string name, FofX_Imp imp)
-            {
-                _name = name;
-                _imp = imp;
-            }
-
-            public override string value(Context context)
-            {
-                return _imp();
-            }
-
-            public override string source()
-            {
-                return _name;
-            }
-
-            public static bool parse(Scanner scanner, string name, FofX_Imp imp, out SFunction tree)
-            {
-                tree = new FofX(name, imp);
-                return true;
-            }
-        }
-*/
 
 
 
@@ -800,3 +666,4 @@ class SArrayRef extends SRef {
         context.dimArray$(this.name, this.col.value(context), this.row.value(context));
     }
 }
+

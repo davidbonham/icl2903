@@ -15,61 +15,7 @@ abstract class NumericExpression extends Expression {
         return ExpressionParser.parse(scanner, 0)
     }
 }
-/*
 
-
-        protected class FofSSN : NFunction
-        {
-            protected string _name;
-            protected StringExpression _op1;
-            protected StringExpression _op2;
-            protected NumericExpression _op3;
-            protected FofSSN_Imp _imp;
-
-            public FofSSN(string name, FofSSN_Imp imp, StringExpression op1, StringExpression op2, NumericExpression op3)
-            {
-                _name = name;
-                _imp = imp;
-                _op1 = op1;
-                _op2 = op2;
-                _op3 = op3;
-            }
-
-            public override double value(Context context)
-            {
-                string op1 = _op1.value(context);
-                string op2 = _op2.value(context);
-                double op3 = _op3.value(context);
-                return _imp(op1, op2, op3);
-            }
-
-            public override string source()
-            {
-                return _name + '(' + _op1.source() + ',' + _op2.source() + ',' + _op3.source() + ')';
-            }
-
-            public static bool parse(Scanner scanner, string name, FofSSN_Imp imp, out NFunction tree)
-            {
-                StringExpression  op1;
-                StringExpression  op2;
-                NumericExpression op3;
-                if (scanner.consume_symbol(Scanner.TokenType.PAR)
-                && StringExpression.parse(scanner, out op1)
-                && scanner.consume_symbol(Scanner.TokenType.COMMA)
-                && StringExpression.parse(scanner, out op2)
-                && scanner.consume_symbol(Scanner.TokenType.COMMA)
-                && NumericExpression.parse(scanner, out op3)
-                && scanner.consume_symbol(Scanner.TokenType.REN))
-                {
-                    tree = new FofSSN(name, imp, op1, op2, op3);
-                    return true;
-                }
-
-                tree = null;
-                return false;
-            }
-        }
-        */
 
 class ExpressionParser {
 
@@ -419,14 +365,12 @@ class FofN extends NFunction {
         return this.name + '(' + this.operand.source() + ')';
     }
 
+
     public static parseFofN(scanner: Scanner, name: string, func: (b: number) => number) : NFunction {
-        if (scanner.consumeSymbol(TokenType.PAR)) {
-            const operand = NumericExpression.parse(scanner)
-            if (operand && scanner.consumeSymbol(TokenType.REN)) {
-                return new FofN(name, func, operand);
-            }
-        }
-        return null
+        const args = Expression.parseArgList(scanner, "N")
+        return args ? new FofN(name, func,
+                               <NumericExpression>args[0],
+                              ) : null
    }
 }
 
@@ -459,13 +403,10 @@ class FofS extends NFunction {
     }
 
     public static parseFofS(scanner: Scanner, name: string, func: (b: string) => number) : NFunction {
-        if (scanner.consumeSymbol(TokenType.PAR)) {
-            const operand = StringExpression.parse(scanner)
-            if (operand && scanner.consumeSymbol(TokenType.REN)) {
-                return new FofS(name, func, operand);
-            }
-        }
-        return null
+        const args = Expression.parseArgList(scanner, "S")
+        return args ? new FofS(name, func,
+                               <StringExpression>args[0],
+                              ) : null
    }
 }
 
@@ -509,18 +450,11 @@ class FofSS extends NFunction {
     }
 
     public static parseFofSS(scanner: Scanner, name: string, func: (a: string, b: string) => number) : FofSS {
-        let op1: StringExpression
-        let op2: StringExpression
-
-        if (scanner.consumeSymbol(TokenType.PAR)
-        &&  (op1 = StringExpression.parse(scanner))
-        &&  scanner.consumeSymbol(TokenType.COMMA)
-        &&  (op2 = StringExpression.parse(scanner))
-        &&  scanner.consumeSymbol(TokenType.REN)) {
-            return new FofSS(name, func, op1, op2);
-        }
-
-        return null
+        const args = Expression.parseArgList(scanner, "SS")
+        return args ? new FofSS(name, func,
+                                <StringExpression>args[0],
+                                <StringExpression>args[1],
+                               ) : null
     }
 }
 
@@ -546,21 +480,12 @@ class FofSSN extends NFunction {
     }
 
     public static parseFofSSN(scanner: Scanner, name: string, func: (a: string, b: string, c:number) => number) : FofSSN {
-        let op1: StringExpression
-        let op2: StringExpression
-        let op3: NumericExpression
-
-        if (scanner.consumeSymbol(TokenType.PAR)
-        &&  (op1 = StringExpression.parse(scanner))
-        &&  scanner.consumeSymbol(TokenType.COMMA)
-        &&  (op2 = StringExpression.parse(scanner))
-        &&  scanner.consumeSymbol(TokenType.COMMA)
-        &&  (op3 = NumericExpression.parse(scanner))
-        &&  scanner.consumeSymbol(TokenType.REN)) {
-            return new FofSSN(name, func, op1, op2, op3);
-        }
-
-        return null
+        const args = Expression.parseArgList(scanner, "SSN")
+        return args ? new FofSSN(name, func,
+                                 <StringExpression>args[0],
+                                 <StringExpression>args[1],
+                                 <NumericExpression>args[2],
+                                ) : null
     }
 }
 

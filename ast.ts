@@ -133,6 +133,52 @@ class SequenceStmt extends Statement
 
 abstract class Expression extends ASTNode {
     public abstract source() : string;
+
+    protected static parseArgList(scanner: Scanner, pattern: string) : Expression[] {
+
+        let expressions: Expression[] = []
+        let parsedCount : number = 0
+        let separator = TokenType.PAR
+
+        const mark = scanner.mark()
+        wto("enter parseArgList pattern=" + pattern)
+        for(const kind of pattern) {
+
+            if (scanner.consumeSymbol(separator)) {
+                wto("parsed separator ")
+                // We have a separator after the previous argument so we
+                // must have an expression. If we parse one, add it to the
+                // list otherwise we have failed to parse the arguments.
+                const expr = kind == "N" ? NumericExpression.parse(scanner) : StringExpression.parse(scanner)
+                if (expr) {
+                    wto("parsed " + kind + " argument " + expr.source())
+                    expressions.push(expr)
+
+                    // We've successfully dealt with this argument and
+                    // we're ready for the next. Once we have parsed the
+                    // first argument, the remainder are preceded by commas
+                    separator = TokenType.COMMA
+                    continue
+                }
+            }
+
+            wto("failed to parse argument")
+            // There was no separator or, if there was, there was no
+            // following argument and one was expected so we have failed.
+            scanner.restore(mark)
+            return null
+        }
+
+        // There was an argument list so we must end with a parenthesis
+        if (!scanner.consumeSymbol(TokenType.REN)) {
+            wto("failed to parse closing bracket")
+            scanner.restore(mark)
+            return null
+        }
+        wto("parsed arguments")
+        return expressions
+    }
+
 }
 
 
