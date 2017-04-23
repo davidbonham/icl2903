@@ -163,6 +163,9 @@ class BasicParser
         else if (scanner.consumeCommand("DAT")) {
             return this.eoc(scanner, DateCmd.parse(scanner))
         }
+        else if (scanner.consumeCommand("DEL")) {
+            return this.eoc(scanner, DeleteCmd.parse(scanner))
+        }
         else if (scanner.consumeCommand("DIS")) {
             return this.eoc(scanner, new DiscCmd());
         }
@@ -212,10 +215,6 @@ class BasicParser
         else if (scanner.consume_command("CON"))
         {
             return eoc(scanner, ContinueCmd.parse(scanner));
-        }
-        else if (scanner.consume_command("DEL"))
-        {
-            return eoc(scanner, DeleteCmd.parse(scanner));
         }
         else if (scanner.consume_command("MES")
                 || scanner.consume_command("MESSAGE"))
