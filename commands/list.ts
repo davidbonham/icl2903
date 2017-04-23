@@ -13,7 +13,6 @@ class ListCmd extends Command {
 
     public execute(session: Session.Session) : void {
 
-        session.program.dump()
         // Interaction with the can't affect the output or state so we
         // can list the entire program and rely on the terminal to
         // discard output when interrupted
