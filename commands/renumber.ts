@@ -1,3 +1,14 @@
+/**
+ * RENUMBER, RESEQUENCE - renumber the lines in the BASIC program or terminal
+ * format file.
+ *
+ * For BASIC programs, this takes account of line numbers specified as
+ * branch destinations too. The bulk of the work is done by the program
+ * class itself, which understands the meanings of statements.
+ *
+ * RENUMBER 100         Start numbering from 100 with increments of 10
+ * RENUMBER 100,50      Start numbering from 100 with increments of 50
+ */
 class RenumberCmd extends Command {
 
     public constructor(protected readonly start: number, protected readonly step: number) {

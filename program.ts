@@ -219,8 +219,19 @@ class Program {
         this.staleLineMap = true
     }
 
+    /**
+     * Renumber the contents of the program, taking account of line numbers
+     * present in control flow statements like GOTO and ON n GOSUB. Any
+     * statement sequences in the program have been expanded in line and
+     * these need to be treated specially.
+     *
+     * @param start  the line number for the first line in the contents
+     * @param step   the step size between line numbers
+     */
     public renumber(start: number, step: number) : void {
 
+        // Befoew we do anyting, make sure that the final line will have
+        // a statement number that is small enough to be legal.
         var lastNumber = start + step * this.lineCount()
         if (lastNumber > Scanner.MAX_LINE) {
             this.session.println("EXCEEDS LINE " + Scanner.MAX_LINE)
@@ -272,13 +283,10 @@ class Program {
                 newContents[currentIndex] = stmt
             })
 
-            this.contents = newContents
-
             // We've changed the program so it needs to be run again before
-            // it can be continued
+            // it can be continued and we have also invalidated the line map
+            this.contents = newContents
             this.continuable = false
-
-            // This must have invalidated the line map
             this.staleLineMap = true
         }
     }
