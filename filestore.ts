@@ -163,11 +163,16 @@ class FileStore
                 const [ACCOUNT, username] = file.split("_")
                 message = "ACCOUNT " + username + "\n" + sessionStorage[file]
             }
-            else {
+            else if (file.startsWith("+")) {
                 // The message we send is STORE <user> <file>\n<data>
                 const [FILE, DATA, username, filename] = file.split("_")
                 const data = sessionStorage[file];
                 message = "STORE " + username + " " + filename + "\n" + data
+            }
+            else {
+                // The message we need to send is REMOVE <user> <file>
+                const [FILE, DATA, username, filename] = file.split("_")
+                message = "REMOVE " + username + " " + filename
             }
 
             this.perform(message, (request: XMLHttpRequest|undefined) => {
@@ -295,9 +300,32 @@ class FileStore
 
         // Add the paths to the list of items not in sync with the remote
         // server and then kick off a synchronisation.
-        sessionStorage["DIRTY"] = sessionStorage["DIRTY"] + "/" + key
+        sessionStorage["DIRTY"] = sessionStorage["DIRTY"] + "/" + "+"+key
         this.synchronise()
 
+        return null
+    }
+
+    public remove(isLibrary: boolean, filename: string) : string {
+
+        if (!this.exists(isLibrary, filename)) {
+            return "PROGRAM NOT FOUND"
+        }
+
+        // If this file is a library file, it isn't clear what should happen
+        // so for now we don't allow ir
+        if (isLibrary) return "NO ACCESS"
+
+        // Remove the file from the session storage
+        const infoKey = this.infoKey(isLibrary, filename)
+        const dataKey = this.dataKey(isLibrary, filename)
+
+        sessionStorage.removeItem(infoKey)
+        sessionStorage.removeItem(dataKey)
+        sessionStorage["DIRTY"] = sessionStorage["DIRTY"] + "/" + "-"+dataKey
+        this.synchronise()
+
+        // All went well
         return null
     }
 

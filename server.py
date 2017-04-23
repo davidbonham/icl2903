@@ -34,6 +34,32 @@ def account_handler(command, data):
 
     return "OK: ACCOUNT " + command[1] + " UPDATED"
 
+def remove_handler(command, data):
+
+    if len(command) != 3: return "ERROR: MALFORMED REMOVE COMMAND"
+    if len(data) != 0: return "ERROR: TOO MUCH DATA FOR REMOVE COMMAND"
+
+    # Clean the username we will use to form a path. Insist on all uppercase
+    # letters.
+    if not re.match("^[A-Z]{1,6}$", command[1]): return "ERROR: MALFORMED USERNAME IN REMOVE COMMAND"
+
+    # Clean the filename we will use to form a path. Insist on all uppercase
+    # letters.
+    if not re.match("^[A-Z][A-Z0-9#+=>&]{0,5}$", command[1]): return "ERROR: MALFORMED FILENAME IN REMOVE COMMAND"
+
+    # The user directory must exist
+    user_directory = os.path.join(filesystem_root, command[1])
+    if not os.path.isdir(user_directory): return "ERROR: NO SUCH USER IN REMOVE"
+
+    # The file should exist, but if it does not, this is a mismatch between
+    # the client's file system by simply doing nothing instead
+    path = os.path.join(user_directory, command[2])
+    if not os.path.isfile(path): return "OK: FILE DOES NOT EXIST"
+
+    # Remove the file
+    os.remove(path)
+    return "OK: FILE REMOVED"
+
 def store_handler(command, data):
 
     if len(command) != 3: return "ERROR: MALFORMED STORE COMMAND"
@@ -122,6 +148,7 @@ def error_handler(command, DATA):
 fs_handlers = {
     'LOAD'     : load_handler,
     'HELLO'    : hello_handler,
+    'REMOVE'   : remove_handler,
     'STORE'    : store_handler,
     'LOADALL'  : loadall_handler,
     'ACCOUNT'  : account_handler,

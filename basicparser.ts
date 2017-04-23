@@ -9,29 +9,22 @@ class BasicParser
         ErrorCode.set(ErrorCode.NoError)
     }
 
-/*
-    private  ASTNode syn(string code)
-    {
-        ErrorCode.set(code);
-        return null;
-    }
-*/
     private  eoc(scanner: Scanner, node: ASTNode) : ASTNode {
-        if (node != null) {
+
+        if (node instanceof Command) {
             // We parsed the command successfully. If there's nothing left,
-            // all is well
+            // all is well otherwise there is too much text
             if (scanner.atEol()) return node;
 
             // Anything left over is an error
             return ErrorCode.CharacterAfterCommand
         }
         else {
-            // The parser should have set an error
-            if (ErrorCode.get() == ErrorCode.NoError)
-            {
-                return ErrorCode.BugCheck
-            }
-            return null;
+
+            // We failed to parse the arguments for this command. All commands
+            // can be determined from the first token on the line so there
+            // is no chance another command might parse it.
+            return ErrorCode.CommandNotRecognised
         }
     }
 
@@ -156,58 +149,61 @@ class BasicParser
     public parseCommand(scanner: Scanner) : ASTNode {
 
         if (scanner.consumeCommand("?")) {
-            console.log("got ? eoc=" + scanner.atEol())
             return this.eoc(scanner, new QuestionCmd())
         }
         else if (scanner.consumeCommand("ACC")) {
-            return this.eoc(scanner, new AccountCmd());
+            return this.eoc(scanner, new AccountCmd())
         }
         else if (scanner.consumeCommand("BYE")) {
             return this.eoc(scanner, new ByeCmd)
         }
         else if (scanner.consumeCommand("CAT")) {
-            return this.eoc(scanner, CatalogueCmd.parse(scanner, false));
+            return this.eoc(scanner, CatalogueCmd.parse(scanner, false))
         }
         else if (scanner.consumeCommand("DAT")) {
-            return this.eoc(scanner, DateCmd.parse(scanner));
+            return this.eoc(scanner, DateCmd.parse(scanner))
         }
         else if (scanner.consumeCommand("DIS")) {
             return this.eoc(scanner, new DiscCmd());
         }
         else if (scanner.consumeCommand("GET")
                 || scanner.consumeCommand("OLD")) {
-            return this.eoc(scanner, GetCmd.parse(scanner));
+            return this.eoc(scanner, GetCmd.parse(scanner))
+        }
+        else if (scanner.consumeCommand("KIL")
+                || scanner.consumeCommand("UNS"))  {
+            return this.eoc(scanner, KillCmd.parse(scanner))
         }
         else if (scanner.consumeCommand("LEN")) {
-            return this.eoc(scanner, LengthCmd.parse(scanner));
+            return this.eoc(scanner, LengthCmd.parse(scanner))
         }
         else if (scanner.consumeCommand("LIB")) {
-            return this.eoc(scanner, CatalogueCmd.parse(scanner, true));
+            return this.eoc(scanner, CatalogueCmd.parse(scanner, true))
         }
         else if (scanner.consumeCommand("LIS")) {
-            return this.eoc(scanner, ListCmd.parse(scanner));
+            return this.eoc(scanner, ListCmd.parse(scanner))
         }
         else if (scanner.consumeCommand("NAM")) {
-            return this.eoc(scanner, NameCmd.parse(scanner));
+            return this.eoc(scanner, NameCmd.parse(scanner))
         }
         else if (scanner.consumeCommand("PUN")) {
-            return this.eoc(scanner, ListCmd.parse(scanner));
+            return this.eoc(scanner, ListCmd.parse(scanner))
         }
         else if (scanner.consumeCommand("RUN")) {
-            return this.eoc(scanner, RunCmd.parse(scanner));
+            return this.eoc(scanner, RunCmd.parse(scanner))
         }
         else if (scanner.consumeCommand("SAV")) {
-            return this.eoc(scanner, SaveCmd.parse(scanner));
+            return this.eoc(scanner, SaveCmd.parse(scanner))
         }
         else if (scanner.consumeCommand("SCR")) {
-            return this.eoc(scanner, ScratchCmd.parse(scanner));
+            return this.eoc(scanner, ScratchCmd.parse(scanner))
         }
 
         else if (scanner.consumeCommand("TIM")) {
-            return this.eoc(scanner, TimeCmd.parse(scanner));
+            return this.eoc(scanner, TimeCmd.parse(scanner))
         }
         else if (scanner.consumeCommand("XPU")) {
-            return this.eoc(scanner, ListCmd.parse(scanner));
+            return this.eoc(scanner, ListCmd.parse(scanner))
         }
 
         return ErrorCode.CommandNotRecognised
@@ -220,11 +216,6 @@ class BasicParser
         else if (scanner.consume_command("DEL"))
         {
             return eoc(scanner, DeleteCmd.parse(scanner));
-        }
-        else if (scanner.consume_command("KIL")
-                || scanner.consume_command("UNS"))
-        {
-            return eoc(scanner, KillCmd.parse(scanner));
         }
         else if (scanner.consume_command("MES")
                 || scanner.consume_command("MESSAGE"))
