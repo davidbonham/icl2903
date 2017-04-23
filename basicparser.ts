@@ -160,6 +160,9 @@ class BasicParser
         else if (scanner.consumeCommand("CAT")) {
             return this.eoc(scanner, CatalogueCmd.parse(scanner, false))
         }
+        else if (scanner.consumeCommand("CON")) {
+            return this.eoc(scanner, ContinueCmd.parse(scanner));
+        }
         else if (scanner.consumeCommand("DAT")) {
             return this.eoc(scanner, DateCmd.parse(scanner))
         }
@@ -216,10 +219,6 @@ class BasicParser
         return ErrorCode.CommandNotRecognised
     }
         /*
-        else if (scanner.consume_command("CON"))
-        {
-            return eoc(scanner, ContinueCmd.parse(scanner));
-        }
         else if (scanner.consume_command("MES")
                 || scanner.consume_command("MESSAGE"))
         {
@@ -230,10 +229,6 @@ class BasicParser
         {
             return eoc(scanner, new NopCmd());
         }
-
-        return null;
-    }
-
 */
     public parse(line : string) : ASTNode | string | undefined {
 

@@ -442,7 +442,6 @@ class Program {
                     context.stmtIndex = line == 0 ? context.nextStmtIndex : Program.lineToIndex(line)
                 }
 
-
                 if (this.contents[context.stmtIndex] != undefined) {
 
                     if (run) {

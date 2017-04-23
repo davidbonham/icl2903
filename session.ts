@@ -187,8 +187,10 @@ namespace Session {
                     }
                     else if (event.kind == Terminal.EventKind.Interrupt) {
                         // Interrupting while nothing is running is harmless
-                        tty.crlf();
-                        tty.println("BREAK IN");
+                        if (!tty.printer.isPrinting) {
+                            tty.crlf();
+                            tty.println("BREAK IN");
+                        }
                     }
                 }
             }
@@ -255,6 +257,19 @@ namespace Session {
 
         public run(line: number) {
             this.program_.run(line, this.commandContext, true)
+        }
+
+        /**
+         * Check that there is a current program and that it can be
+         * resumed (it hasn't been edited since it was last run, for example)
+         * and then resume it from the requested line. A value of zero for
+         * the line number means the next statement that would have been
+         * executed.
+         *
+         * @param line  line number of the next line to be executed
+         */
+        public resume(line: number) {
+            this.program_.run(line, this.commandContext, false)
         }
 
         public perform(command: string) : boolean {
