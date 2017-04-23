@@ -170,11 +170,11 @@ class BasicParser
             return this.eoc(scanner, new DiscCmd());
         }
         else if (scanner.consumeCommand("GET")
-                || scanner.consumeCommand("OLD")) {
+              || scanner.consumeCommand("OLD")) {
             return this.eoc(scanner, GetCmd.parse(scanner))
         }
         else if (scanner.consumeCommand("KIL")
-                || scanner.consumeCommand("UNS"))  {
+              || scanner.consumeCommand("UNS"))  {
             return this.eoc(scanner, KillCmd.parse(scanner))
         }
         else if (scanner.consumeCommand("LEN")) {
@@ -191,6 +191,10 @@ class BasicParser
         }
         else if (scanner.consumeCommand("PUN")) {
             return this.eoc(scanner, ListCmd.parse(scanner))
+        }
+        else if (scanner.consumeCommand("RES")
+              || scanner.consumeCommand("REN")) {
+            return this.eoc(scanner, RenumberCmd.parse(scanner))
         }
         else if (scanner.consumeCommand("RUN")) {
             return this.eoc(scanner, RunCmd.parse(scanner))
@@ -220,11 +224,6 @@ class BasicParser
                 || scanner.consume_command("MESSAGE"))
         {
             return eoc(scanner, MessageCmd.parse(scanner));
-        }
-        else if (scanner.consume_command("RES")
-                || scanner.consume_command("REN"))
-        {
-            return eoc(scanner, RenumberCmd.parse(scanner));
         }
         else if (scanner.consume_command("KEY")
                 || scanner.consume_command("TAP"))

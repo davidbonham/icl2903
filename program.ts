@@ -219,6 +219,70 @@ class Program {
         this.staleLineMap = true
     }
 
+    public renumber(start: number, step: number) : void {
+
+        var lastNumber = start + step * this.lineCount()
+        if (lastNumber > Scanner.MAX_LINE) {
+            this.session.println("EXCEEDS LINE " + Scanner.MAX_LINE)
+        }
+        else {
+
+            // Build a map from the old line numbers to the new ones
+            let lineMap : number[] = []
+            let count = 0
+            this.contents.forEach((stmt: Statement, index: number) => {
+
+                if ((index % 100) == 0) {
+
+                    // This is the main statement of each line, work out its
+                    // new line number and add it to the map
+                    lineMap[Program.indexToLine(index)] = start + count*step
+                    count += 1
+                }
+            })
+
+            // Now ask each statement to renumber itself. We need to consider
+            // all statements, not just those at the start of the line as
+            // a line number could appear anywhere
+            this.contents.forEach((stmt: Statement, index: number) => {
+                stmt.renumber(lineMap)
+            })
+
+            // Finally, renumber all of the lines. We must consider all of
+            // the expanded statements too.
+            let newContents : Statement[] = []
+            let currentIndex : number
+            let nextExpansion : number
+            this.contents.forEach((stmt: Statement, index: number) => {
+
+                // Work out the new index for this statement
+                if ((index % 100) == 0) {
+
+                    // This is the first statement in the line. It's new
+                    // line number comes from the line map
+                    const currentLine = lineMap[Program.indexToLine(index)]
+                    currentIndex = Program.lineToIndex(currentLine)
+                }
+                else {
+                    // This is an expansion statement so it goes one index
+                    // after the previous statement
+                    currentIndex += 1
+                }
+
+                newContents[currentIndex] = stmt
+            })
+
+            this.contents = newContents
+
+            // We've changed the program so it needs to be run again before
+            // it can be continued
+            this.continuable = false
+
+            // This must have invalidated the line map
+            this.staleLineMap = true
+        }
+    }
+
     protected nextStatementIndex(index: number) : number {
 
         // If the next array element exists, then that is the next one
