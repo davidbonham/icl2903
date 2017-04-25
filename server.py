@@ -13,6 +13,13 @@ import time
 global filesystem_root
 filesystem_root = None
 
+def clean(text):
+    '''
+    Clean up any file formatting issues. Currently, convert crlfs
+    into lfs
+    '''
+    return text.replace("\r\n", "\n")
+
 def hello_handler(request):
     return 'OK: server up'
 
@@ -100,7 +107,7 @@ def load_handler(command, data):
         return 'ERROR: no such file as ' + name
     else:
         with open(path, 'r') as file:
-            return 'OK: file read\n' + file.read()
+            return 'OK: file read\n' + clean(file.read())
 
 
 def loadall_handler(command, data):
@@ -133,7 +140,7 @@ def loadall_handler(command, data):
         timestamp = datetime.datetime.fromtimestamp(os.path.getmtime(path)).strftime('%d%m%Y%H%M%S')
 
         with open(path, 'r') as file:
-            content = file.read()
+            content = clean(file.read())
         length = '%8d' % len(content)
 
         entry = 'SOF' + name + timestamp + length + content + 'EOF'
