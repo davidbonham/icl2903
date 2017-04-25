@@ -63,19 +63,16 @@ abstract class Datum {
 
 class NDatum extends Datum {
 
-    protected readonly data: number;
-
     public source() : string {
         return this.text;
     }
 
-    public value() : number {
-        return this.data;
+    public value() : string {
+        return this.text;
     }
 
     public constructor(protected readonly text: string) {
         super()
-        this.data = Number.parseFloat(text)
     }
 }
 
