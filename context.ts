@@ -25,6 +25,7 @@ class Context {
 
     public constructor(protected _parent: Context, protected _owner: Program) {
         this.controlstack = new ControlStack(this)
+        this.data = new Data
         this.clear()
     }
 
@@ -44,7 +45,7 @@ class Context {
         this.sarray  = {}
 
         this.controlstack.clear();
-        //this._data.clear();
+        this.data.clear();
     }
 
     // ---------------------------------------------------------------------
