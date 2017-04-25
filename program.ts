@@ -369,12 +369,19 @@ class Program {
 
         // We're going to run the program so prepare data, dimensions &c. Any errors
         // need up be update to specify the current line number
-        try {
-            this.contents.forEach((value, index) => value.prepare(context, Program.indexToLine(index)))
-        }
-        catch (e) {
-            throw new Utility.RunTimeError(e.error, e.index);
-        }
+        this.contents.forEach((value, index) => {
+            try {
+                value.prepare(context, Program.indexToLine(index))
+            }
+            catch (e) {
+                if (e instanceof Utility.RunTimeError) {
+                    throw new Utility.RunTimeError(e.error, index)
+                }
+                else {
+                    throw e
+                }
+            }
+        })
     }
 
     /**
