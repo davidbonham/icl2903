@@ -9,6 +9,9 @@ class Context {
     // The array index of the next statement to execute
     public nextStmtIndex: number
 
+    // The data defined by the program for READ
+    public data: Data;
+
     protected nscalar : { [name: string] : number}
     protected nvector : { [name: string] : NVector}
     protected narray  : { [name: string] : NArray}
@@ -329,5 +332,74 @@ class SArray {
 
     public constructor(public readonly colBound: number, public readonly rowBound: number) {
         this.elements = []
+    }
+}
+
+class Data
+{
+    // DATA statements get preprocessed and their data is held in this list
+    public data: Datum[]
+
+    // map[n] is the index in data of the first datum for the DATA
+    // statement on line n. For the RESTORE statement.
+    public map: number[]
+
+    protected next: number
+
+    public clear() : void {
+        this.data = []
+        this.map = []
+        this.next = 0
+    }
+
+    public add(line: number, datum: Datum) : void {
+
+        // If we haven't seen this line before, note the position of
+        // its first datum in the list.
+        if (!(line in this.map)) {
+            this.map[line] = this.data.length;
+        }
+        this.data.push(datum)
+    }
+
+    public constructor() {
+        this.clear()
+    }
+
+    public restore(line: number) : void {
+
+        // Typically, the line number will be in the map. If it isn't,
+        // then find the first entry in the map greater than the line
+        // number. If there isn't one, position to the end of the data.
+        let position = -1;
+        if ((line in this.map)) {
+            position = this.map[line]
+        }
+        else {
+            this.map.forEach((pos, lineNumber) => {
+                if (position === -1 && lineNumber >= line) {
+                    position = pos
+                }
+            })
+
+            if (position == -1) {
+                position = this.data.length
+            }
+        }
+        this.next = position;
+    }
+
+    public more() : boolean {
+        return this.next < this.data.length
+    }
+
+    public nextDatum() : Datum {
+        if (!this.more()) {
+            throw new Utility.RunTimeError(ErrorCode.BugCheck)
+        }
+
+        const result = this.data[this.next]
+        this.next += 1
+        return result
     }
 }

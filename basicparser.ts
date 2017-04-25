@@ -52,7 +52,8 @@ class BasicParser
     }
 
     public static parseStatement(scanner: Scanner) : Statement | undefined {
-        return DimStmt.parse(scanner)
+        return DataStmt.parse(scanner)
+            || DimStmt.parse(scanner)
             || EndStmt.parse(scanner)
             || ForStmt.parse(scanner)
             || GoBase.parse(scanner)
@@ -70,7 +71,6 @@ class BasicParser
             || SLetStmt.parseSLet(false, scanner)
         /*
         return ChangeStmt.parseChange(scanner, out statement)
-            || DataStmt.parseData(scanner, out statement)
             || MarginStmt.parse(scanner, out statement)
             || ReadStmt.parseRead(scanner, out statement)
             || RestoreStmt.parseRestore(scanner, out statement)
@@ -191,6 +191,9 @@ class BasicParser
         }
         else if (scanner.consumeCommand("NAM")) {
             return this.eoc(scanner, NameCmd.parse(scanner))
+        }
+        else if (scanner.consumeCommand("NEW")) {
+            return this.eoc(scanner, NewCmd.parse(scanner))
         }
         else if (scanner.consumeCommand("PUN")) {
             return this.eoc(scanner, ListCmd.parse(scanner))

@@ -325,7 +325,6 @@ class Program {
         }
 
         // Get the next line number and convert it into its index
-        console.log("nextStatementIndex " + index + "->" + (this.nextLineMap[index/100] * 100))
         return Program.lineToIndex(this.nextLineMap[Program.indexToLine(index)])
     }
 
@@ -435,7 +434,6 @@ class Program {
                 if (run) {
                     // Run from the specified line or the start if none specified
                     context.stmtIndex = line == 0 ? this.nextStatementIndex(0) : line*100
-                    console.log("1 line=" + line + " stmtIndex=" + context.stmtIndex)
                 }
                 else {
                     // Continue from the specified line or the next if none specified
@@ -501,7 +499,6 @@ class Program {
                 context.nextStmtIndex = this.nextStatementIndex(context.stmtIndex)
 
                 // Execute the current statement
-                wto("index=" + context.stmtIndex + ": " + this.contents[context.stmtIndex].source())
                 this.contents[context.stmtIndex].execute(context)
             }
             else {
