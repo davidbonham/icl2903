@@ -1,6 +1,6 @@
 class KillCmd extends Command {
 
-    protected constructor(protected readonly filename: string) {
+    public constructor(protected readonly filename: string) {
         super()
     }
 
