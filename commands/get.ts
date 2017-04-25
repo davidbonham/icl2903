@@ -23,22 +23,24 @@ class GetCmd extends Command {
     protected loadBasic(session: Session.Session, file: string[]) : boolean {
 
         const parser = new BasicParser
+        let count = 1
         for (const line of file)
         {
+            count += 1
             // Ignore blank lines
             if (line == "") continue
 
             const node = parser.parse(line)
             if (node == null) {
-                session.println("CORRUPT BASIC FILE - PARSE FAILED");
+                session.println("CORRUPT BASIC FILE - PARSE FAILED AT LINE " + count);
                 session.println(ErrorCode.lastError);
             }
             else if (node instanceof LineCmd) {
                 node.execute(session)
             }
             else {
-                session.println("CORRUPT BASIC FILE - NOT A LINE");
-                session.println(ErrorCode.lastError);
+                session.println("CORRUPT BASIC FILE - AT LINE " + count + " " + node);
+                session.println(line)
                 return false;
             }
         }
