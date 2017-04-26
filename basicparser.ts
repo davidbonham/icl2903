@@ -52,7 +52,8 @@ class BasicParser
     }
 
     public static parseStatement(scanner: Scanner) : Statement | undefined {
-        return DataStmt.parse(scanner)
+        return ChangeStmt.parse(scanner)
+            || DataStmt.parse(scanner)
             || DimStmt.parse(scanner)
             || EndStmt.parse(scanner)
             || ForStmt.parse(scanner)
@@ -72,7 +73,7 @@ class BasicParser
             || NLetStmt.parseNLet(false, scanner)
             || SLetStmt.parseSLet(false, scanner)
         /*
-        return ChangeStmt.parseChange(scanner, out statement)
+        return
             || MarginStmt.parse(scanner, out statement)
             */
     }
