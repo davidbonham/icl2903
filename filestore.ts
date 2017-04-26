@@ -441,8 +441,9 @@ class Account {
         // Get a list of all the users files
         const files = this.owner.catalogue(false)
 
+
         // Map each filename into its size in buckets and sum the sizes
-        const buckets = files.map((filename) => {
+        const buckets = files.length == 0 ? 0 : files.map((filename) => {
             const info = this.owner.fileInfo(false, filename)
             return info["buckets"]
         }).reduce((a, b) => a + b)
