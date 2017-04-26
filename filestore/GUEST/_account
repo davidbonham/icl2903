@@ -1,0 +1,8 @@
+logins 1
+time 1
+mill 0
+disc 0
+max_logins 10000
+max_time 10000
+max_mill 1000
+max_disc 360
