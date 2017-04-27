@@ -252,7 +252,7 @@ class LStringRelation extends LogicalExpression {
         }
     }
 
-    public static parseStringRelation(scanner: Scanner) : LStringRelation
+    public static parse(scanner: Scanner) : LStringRelation
     {
         let lhs: StringExpression
         let rhs: StringExpression
