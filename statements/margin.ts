@@ -20,7 +20,7 @@ class MarginStmt extends Statement {
         else if (tty instanceof TerminalChannel) {
 
             const margin = Utility.round(this.margin.value(context))
-            if (margin < 0 || Channel.MAX_MARGIN < margin) throw new Utility.RunTimeError(ErrorCode.InvArg);
+            if (margin <= 0 || Channel.MAX_MARGIN < margin) throw new Utility.RunTimeError(ErrorCode.InvArg);
 
             tty.margin(margin)
         }
