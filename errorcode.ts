@@ -1,5 +1,8 @@
 class ErrorCode
 {
+    // Error messages that end with an exclamation mark are cases where
+    // don't have any example of the real message.
+
     public static NoError = "0";
     public static StatementNotRecognised = "ERROR  86";
     public static CommandNotRecognised = "ERROR  89";
