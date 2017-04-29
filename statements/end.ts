@@ -20,8 +20,8 @@ class EndStmt extends Statement {
 
     public execute(context: Context) : boolean {
 
-        // There may be a pending new line on the tty
-        context.terminate()
+        // There may be a pending new line on the tty but the session
+        // will close all of the channels before it reports the DONE
 
         // Use the error handling mechanism to generate the end message
         throw new Utility.RunTimeError("DONE");
