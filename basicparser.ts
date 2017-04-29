@@ -72,10 +72,7 @@ class BasicParser
             || StopStmt.parse(scanner)
             || NLetStmt.parseNLet(false, scanner)
             || SLetStmt.parseSLet(false, scanner)
-        /*
-        return
-            || MarginStmt.parse(scanner, out statement)
-            */
+            || MarginStmt.parse(scanner)
     }
 
     protected parseStatementSequence(scanner: Scanner) : SequenceStmt {

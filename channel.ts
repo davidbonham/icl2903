@@ -10,7 +10,7 @@ abstract class Channel {
     // TTYChannel does interactive input with the user's TTY
 
     // The MARGIN statement sets the channel width. There's a documented limit:
-    public readonly MAX_MARGIN = 124
+    public static readonly MAX_MARGIN = 124
 
     // We'll need to know if we're interactive or not
     protected _is_terminal : boolean
@@ -216,6 +216,7 @@ abstract class TerminalChannel extends Channel
     }
 
     public begin() : void {
+        wto("begin");
         this._nlPending = true;
 
         // Remove any previous format, even if it is empty, so we can tell if one is
@@ -224,6 +225,7 @@ abstract class TerminalChannel extends Channel
     }
 
     public end() : void {
+        wto("end nlpending=" + this._nlPending)
         // If there is a new-line pending at the end of this PRINT statement, it's
         // time to output it otherwise keep things as they are for the next PRINT
         // statement to continue
@@ -259,6 +261,7 @@ abstract class TerminalChannel extends Channel
     }
 
     public close() : void {
+        wto("close")
         // We're closing this channel so if there is output pending, add a
         // new line before we flush the current output.
         if (this._offset > 0) this.wrch('\n');
@@ -279,6 +282,7 @@ abstract class TerminalChannel extends Channel
 
             // Either a new line or taken past the margin so start a new
             // line
+            wto("wrch new line because lf=" + (ch == '\n') + " offset=" + this._offset)
             this._buffer += "\n";
             this.eol();
         }
@@ -293,10 +297,12 @@ abstract class TerminalChannel extends Channel
 
     public writes(a_string: string) : void {
         // For now, no optimisation
+        wto("writes '" + a_string + "'")
         for (const ch of a_string) this.wrch(ch);
     }
 
     public  eol() : void {
+        wto("eol")
         this.flush(this._buffer);
         this._nlPending = false;
         this._offset = 0;
@@ -343,6 +349,7 @@ class TTYChannel extends TerminalChannel {
     }
 
     protected flush(buffer: string) : void {
+        wto("flush")
         this.session.print(buffer);
     }
 
