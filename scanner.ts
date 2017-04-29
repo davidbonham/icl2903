@@ -457,7 +457,6 @@ class Scanner
 
     public consumeSid(): boolean {
         let pos = this.p;
-        console.log("pending=" + this.pending)
         if (this.consumeId() && this.pending.type == TokenType.SID) return true;
         this.p = pos;
         this.pending = null;
@@ -468,7 +467,6 @@ class Scanner
 
         this.skip();
 
-        console.log("start with '" + this.text.substring(this.p) + "'")
         // With the exception of ? and HELP, which must be specified exactly
         // all commands can be abbreviated to three characters. Commands
         // may not be terminated by letters so if a command is found,
