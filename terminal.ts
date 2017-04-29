@@ -423,7 +423,6 @@ namespace Terminal
                 // Nothing is printing. Tick the current handler now
                 const result = this.currentHandler.next(event)
 
-                wto("Terminal.generateEvent received result done=" + result.done + " value=" + result.value)
                 this.processHandlerResult(result.value)
 
                 if (result.done) {
@@ -436,8 +435,6 @@ namespace Terminal
 
                 // The handler may have generated some output so start printing
                 // anything that may be queued
-                wto("Terminal.generateEvent finished next so start printing anything generated")
-                this.printer.dumpQueue()
                 this.printer.startPrinting()
             }
         }
