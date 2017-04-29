@@ -1,3 +1,11 @@
+/**
+ * RESTORE [lineno]
+ *
+ * Reposition the pointer to data in DATA statements so that the next item
+ * read by a READ comes from the first DATA statement on or after line
+ * <lineno> of the program. If <lineno> is not specified, the default value
+ * is 1.
+ */
 class RestoreStmt extends Statement {
 
     protected constructor(protected lineNumber: number){
