@@ -11,6 +11,7 @@ abstract class Channel {
 
     // The MARGIN statement sets the channel width. There's a documented limit:
     public static readonly MAX_MARGIN = 124
+    public static readonly DEFAULT_MARGIN = 72
 
     // We'll need to know if we're interactive or not
     protected _is_terminal : boolean
@@ -27,7 +28,6 @@ type FormattedFields = {overflow: boolean; paddedLeadingDigits : string, paddedT
 abstract class TerminalChannel extends Channel
 {
     protected _offset : number
-    protected _nlPending : boolean
     protected _format_list : string[]
     protected _next_format_list_item : number
     protected _do_trace : boolean
@@ -38,7 +38,6 @@ abstract class TerminalChannel extends Channel
         super()
         this._offset = 0;
         this._margin = 72;
-        this._nlPending = false;
         this._format_list = null;
         this._is_terminal = true;
         this._do_trace = false;
@@ -49,23 +48,22 @@ abstract class TerminalChannel extends Channel
 
         // Has no effect if we are bing controlled by a PRINT USING
         if (this._format_list == null) {
-            // A comma is equivalent to tabbing to the next multiple of 15 so we need
-            // to advance the offset until offset+1 is a multiple of 15. We print at
-            // least one space.
-            this.wrch(" ")
-            while (((this._offset + 1) % 15) != 0) {
-                this.wrch(' ');
+
+            // A comma is equivalent to tabbing to the next multiple of
+            // 15 but it must start within the current margin
+            const nextOffset = Math.floor(this._offset/15)*15 + 15
+            const nextColumn = nextOffset+1
+
+            if (nextColumn > this._margin) {
+                // No such zone on the current line so start at the first
+                // zone on the next
+                this.wrch("\n")
+            }
+            else {
+                this.tab(nextColumn)
             }
         }
-
-        // New line not pending
-        this._nlPending = false;
     }
-
-    public semi() : void  {
-        this._nlPending = false;
-    }
-
 
     public tab(column: number) : void {
 
@@ -74,13 +72,12 @@ abstract class TerminalChannel extends Channel
             // Judging from my CURVES program, we expect a tab to earlier in
             // the line to start a new line
             if (this._offset > column) {
-                this.eol();
+                this.wrch("\n")
             }
 
             while (this._offset < column) {
                 this.wrch(' ');
             }
-            this._nlPending = true;
         }
     }
 
@@ -153,7 +150,6 @@ abstract class TerminalChannel extends Channel
             formatted = (value < 0 ? "" : " ") + BIF.str$.call(value) + ' ';
         }
         this.writes(formatted);
-        this._nlPending = true;
     }
 
     public text(value: string)
@@ -212,29 +208,15 @@ abstract class TerminalChannel extends Channel
         }
 
         this.writes(formatted);
-        this._nlPending = true;
     }
 
     public begin() : void {
-        wto("begin");
-        this._nlPending = true;
-
         // Remove any previous format, even if it is empty, so we can tell if one is
         // set by this print statement
         this._format_list = null;
     }
 
     public end() : void {
-        wto("end nlpending=" + this._nlPending)
-        // If there is a new-line pending at the end of this PRINT statement, it's
-        // time to output it otherwise keep things as they are for the next PRINT
-        // statement to continue
-        if (this._nlPending)
-        {
-            this.wrch('\n');
-            this.eol();
-        }
-
         // There shouldn't be any print format items left over
         if (this._format_list != null && this._next_format_list_item < this._format_list.length)
             throw new Utility.RunTimeError(ErrorCode.PrintUsing);
@@ -261,13 +243,17 @@ abstract class TerminalChannel extends Channel
     }
 
     public close() : void {
-        wto("close")
         // We're closing this channel so if there is output pending, add a
         // new line before we flush the current output.
-        if (this._offset > 0) this.wrch('\n');
+        if (this._offset > 0) {
+            this.wrch('\n');
+        }
         this.eol();
 
         // Implementation specific close
+
+        // Reset the margin to the default value
+        this._margin = Channel.DEFAULT_MARGIN
         this.terminal_close();
     }
 
@@ -282,7 +268,6 @@ abstract class TerminalChannel extends Channel
 
             // Either a new line or taken past the margin so start a new
             // line
-            wto("wrch new line because lf=" + (ch == '\n') + " offset=" + this._offset)
             this._buffer += "\n";
             this.eol();
         }
@@ -297,14 +282,11 @@ abstract class TerminalChannel extends Channel
 
     public writes(a_string: string) : void {
         // For now, no optimisation
-        wto("writes '" + a_string + "'")
         for (const ch of a_string) this.wrch(ch);
     }
 
     public  eol() : void {
-        wto("eol")
         this.flush(this._buffer);
-        this._nlPending = false;
         this._offset = 0;
         this._buffer = "";
     }
@@ -349,7 +331,6 @@ class TTYChannel extends TerminalChannel {
     }
 
     protected flush(buffer: string) : void {
-        wto("flush")
         this.session.print(buffer);
     }
 

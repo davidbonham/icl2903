@@ -16,6 +16,7 @@ class PrintComma extends PrintItem {
     }
 }
 
+
 class PrintSemi extends PrintItem {
 
     public source() : string {
@@ -23,7 +24,7 @@ class PrintSemi extends PrintItem {
     }
 
     public render(channel: TerminalChannel, context: Context) {
-        channel.semi();
+        // Nothing to render
     }
 }
 
@@ -57,6 +58,18 @@ class PrintN extends PrintItem {
 
     public render(channel: TerminalChannel, context: Context) : void {
         channel.formatNumber(this.value.value(context));
+    }
+}
+
+class PrintLine extends PrintItem {
+
+    public source() : string {
+        return ""
+    }
+
+    public render(channel: TerminalChannel, context: Context) : void {
+        channel.wrch("\n")
+        channel.eol()
     }
 }
 
@@ -120,18 +133,21 @@ class PrintStmt extends Statement {
         // Now we are at the optional list of print items.
         let items : PrintItem[] = []
         let separator_required = false;
+        let newlineRequired = true;
         while (!scanner.atEos())
         {
             let node: PrintItem = null;
 
             // Separators are always permitted
             if (scanner.consumeSymbol(TokenType.COMMA)) {
-                node = new PrintComma();
-                separator_required = false;
+                node = new PrintComma()
+                separator_required = false
+                newlineRequired = false
             }
             else if (scanner.consumeSymbol(TokenType.SEMI)) {
-                node = new PrintSemi();
-                separator_required = false;
+                node = new PrintSemi()
+                separator_required = false
+                newlineRequired = false
             }
             else if (separator_required) {
                 // Non-separators must not appear consecutively
@@ -144,7 +160,7 @@ class PrintStmt extends Statement {
                 // If we parse a non-separator, we'll need a separator next
                 // time
                 separator_required = true;
-
+                newlineRequired = true;
                 if (scanner.consumeBifn("TAB"))
                 {
                     // Parse rest of TAB(nexpr)
@@ -180,7 +196,9 @@ class PrintStmt extends Statement {
             items.push(node);
         }
 
-        // We have now reached the end of the print statement
+        // We have now reached the end of the print statement. If the last
+        // item is not a semi-colon or a comma, we end with a newline.
+        if (newlineRequired) items.push(new PrintLine)
         return new PrintStmt(channel, using_expr, items);
     }
 
