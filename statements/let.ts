@@ -79,7 +79,7 @@ class NLetStmt extends LetStmt {
 
     public source() : string {
         this.lvs.map((value) => value.source() + "=").join()
-        return (this.hasLet ? "LET " : "") + this.lvs.map((value) => value.source() + "=").join() + this.rhs.source()
+        return (this.hasLet ? "LET " : "") + this.lvs.map((value) => value.source()).join("=") + "=" + this.rhs.source()
     }
 
     public execute(context: Context) : boolean {
@@ -92,87 +92,6 @@ class NLetStmt extends LetStmt {
 }
 
 
-/*
-class SLetStmt : LetStmt
-{
-    bool _let;
-    List<SRef> _lvs;
-    StringExpression _rhs;
-
-    protected SLetStmt(bool let, List<SRef> lvs, StringExpression rhs)
-    {
-        _let = let;
-        _lvs = lvs;
-        _rhs = rhs;
-    }
-
-    public static bool parseSLet(bool let, Scanner scanner, out Statement tree)
-    {
-        StringExpression rhs;
-        List<SRef> lvs = new List<SRef>();
-        int mark = scanner.mark();
-        bool parsed_sref = false;
-
-        // Accumulate left hand sides.
-        int after_eq = 0;
-        for (;;)
-        {
-            SRef sref;
-
-            // Note our position so that when we reach the end of the lvs,
-            // we can position after the final =.
-            if (SRef.parse(scanner, out sref))
-            {
-                // Potentially another S$=. Note we have seen an sref but
-                // only continue to treat it as an lv if it is followed by =
-                parsed_sref = true;
-                if (!scanner.consume_symbol(Scanner.TokenType.EQ)) break;
-            }
-            else
-            {
-                // Didn't see an sref so it can't be an lv
-                break;
-            }
-
-            lvs.Add(sref);
-            after_eq = scanner.mark();
-        }
-
-        // If we didn't see an nref, this isn't an NLet so allow the next
-        // parser to have a go.
-        if (!parsed_sref)
-        {
-            tree = null;
-            return false;
-        }
-
-        // We must have at least one lv.
-        if (lvs.Count() == 0) return fail(scanner, ErrorCode.StatementNotRecognised, mark, out tree);
-
-        // Now make sure we're ready to parse the rhs
-        scanner.restore(after_eq);
-        if (!StringExpression.parse(scanner, out rhs)) return fail(scanner, ErrorCode.StatementNotRecognised, mark, out tree);
-
-        tree = new SLetStmt(let, lvs, rhs);
-        return true;
-    }
-
-    override public string source()
-    {
-        return (_let ? "LET " : "") + string.Join("=", _lvs.Select(lv => lv.source()).ToArray()) + '=' + _rhs.source();
-    }
-
-    public override bool execute(Context context)
-    {
-        string rhs = _rhs.value(context);
-        foreach (SRef sref in _lvs)
-        {
-            sref.set(context, rhs);
-        }
-        return true;
-    }
-}
-*/
 class SLetStmt extends LetStmt {
 
 
@@ -237,7 +156,7 @@ class SLetStmt extends LetStmt {
 
     public source() : string {
         this.lvs.map((value) => value.source() + "=").join()
-        return (this.hasLet ? "LET " : "") + this.lvs.map((value) => value.source() + "=").join() + this.rhs.source()
+        return (this.hasLet ? "LET " : "") + this.lvs.map((value) => value.source()).join("=") + "=" + this.rhs.source()
     }
 
     public execute(context: Context) : boolean {
