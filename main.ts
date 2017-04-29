@@ -21,10 +21,9 @@ function main() {
     //   quickly
     //
     // - when it is waiting for more input (a new command or user input
-    //   for the running program), it will return 'blocked' so the terminal
+    //   for the runnifsng program), it will return 'blocked' so the terminal
     //   need not timeout but can await the next interrupt or entered line.
-    const session = new Session.Session(tty, fs);
-    session.handleAsleep()
+    Session.Session.handleAsleep(tty, fs)
     wto("exit main")
 }
 

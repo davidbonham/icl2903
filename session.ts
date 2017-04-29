@@ -22,11 +22,16 @@ namespace Session {
      * @param session   the session for this browser session
      * @param tty       the terminal device attached to this session
      */
-    function* asleepGenerator (session: Session, tty: Terminal.Terminal) : IterableIterator<Terminal.HandlerResult> {
+    function* asleepGenerator (tty: Terminal.Terminal, fs: FileStore) : IterableIterator<Terminal.HandlerResult> {
         tty.echo();
         for (;;) {
             const ctrla : Terminal.Event = yield ({state: Terminal.State.Asleep})
             if (ctrla.kind == Terminal.EventKind.Interrupt && ctrla.interrupt == 'A') {
+
+                // Having attracted the attention of the system, our session
+                // starts and will continue until the user logs out with
+                // the BYE command
+                const session = new Session(tty, fs);
                 tty.setPendingHandler(loginGenerator (session, tty))
                 return {busy: false};
             }
@@ -211,7 +216,7 @@ namespace Session {
 
         // The user has logged out of the session. Return outselves to the
         // asleep state
-        tty.setPendingHandler(asleepGenerator(session, tty))
+        tty.setPendingHandler(asleepGenerator(tty, session.fileStore))
         return {busy: false}
     }
 
@@ -241,9 +246,9 @@ namespace Session {
         // The error string used by the ? command
         private lastError = ErrorCode.NoError
 
-        public handleAsleep() {
+        public static handleAsleep(tty: Terminal.Terminal, fs: FileStore) {
             // Establish our event handler
-            this.terminal.setHandler(asleepGenerator(this, this.terminal))
+            tty.setHandler(asleepGenerator(tty, fs))
         }
 
         public login(username: string, password: string) : boolean {
