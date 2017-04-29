@@ -6,6 +6,9 @@
 
 namespace Session {
 
+    const TICKS_PER_YIELD = 10000
+    let ticks = 0
+
     /**
      * Handle the system's "asleep" state
      *
@@ -137,7 +140,6 @@ namespace Session {
         // time for later use
         session.start(tty);
 
-        let ticks = 0
         let totalTicks = 0
         let totalMs = 0
         let carryOn = true
@@ -150,18 +152,18 @@ namespace Session {
                     // If the program is running but not awaiting user input, the
                     // user should be unable to type and all we expect from them
                     // is an interrupt
-                    ticks += 1
                     let event : Terminal.Event = {kind: Terminal.EventKind.None}
-                    if (ticks == 10000) {
-                        //const endTime = new Date().getTime()
-                        //const dt = endTime-startTime
-                        //totalMs += dt
-                        //totalTicks += ticks
-                        //wto("rate: dt=" + dt + " " + totalTicks + " in " + totalMs + "ms = " + (1000*totalTicks/totalMs))
+                    if (ticks == TICKS_PER_YIELD) {
+                        const endTime = new Date().getTime()
+                        const dt = endTime-startTime
+                        totalMs += dt
+                        totalTicks += ticks
                         ticks = 0
-                        //startTime=endTime
                         event = yield({state: Terminal.State.Running})
+                        startTime=endTime
                     }
+                    ticks += 1
+
                     switch (event.kind) {
 
                         case Terminal.EventKind.Interrupt:
@@ -197,6 +199,8 @@ namespace Session {
 
                 default: {
 
+                    wto("rate: " + totalTicks + " in " + totalMs + "ms = " + (1000*totalTicks/totalMs) + "Hz")
+
                     // If the program is stopped or interrupted, the user can
                     // provide input for us to process
                     const event : Terminal.Event = yield({state: Terminal.State.Waiting})
@@ -227,8 +231,20 @@ namespace Session {
             this.commandContext = new Context(null, this.program_)
         };
 
-        public println(line: string) : void { this.terminal.println(line) }
-        public print(line: string) : void { this.terminal.print(line) }
+        public println(line: string) : void {
+            this.terminal.println(line)
+            // Ask the session handler to yield so this output can be
+            // displayed
+            ticks = TICKS_PER_YIELD
+        }
+
+        public print(line: string) : void {
+            this.terminal.print(line)
+            // Ask the session handler to yield so this output can be
+            // displayed
+            ticks = TICKS_PER_YIELD
+        }
+
         public crlf() : void { this.terminal.crlf() }
         public echo() : void { this.terminal.echo() }
         public noecho() : void { this.terminal.noecho() }
