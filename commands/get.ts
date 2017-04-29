@@ -1,23 +1,38 @@
 /// <reference path="../basicparser.ts" />
 /// <reference path="../errorcode.ts" />
 
-/**
- * Retrieve a file from the file store for this user or the library if the
- * filename is prefixed with a $. Make the file current.
- *
- * The file must be a terminal format file - that is, its type must be B
- * for a BASIC file or D for a text data file. Other format files (C for
- * a compiled file or I for a binary record structured file) cannot be
- * retrieved.
- */
-class GetCmd extends Command {
+// Several commands manipulate the loaded file by loading another one into
+// it: GET, APPEND. Derive them from the following base class:
+abstract class FileReadingCommand extends Command {
 
     protected constructor(protected readonly filename: string) {
         super()
     }
 
-    public static parse(scanner: Scanner) : GetCmd {
-        return scanner.consumeFilename() ? new GetCmd(scanner.current().text) : null
+    protected getRecords(fs: FileStore) : {type: string, contents: string[]} | string {
+
+        if (this.filename.length > (this.filename[0] == '$' ? 7 : 6)) {
+             return ErrorCode.IllegalProgramName
+        }
+        else {
+            // If the filename starts with a $, it means we should look for it in the
+            // LIBRY account
+            const isLibrary = this.filename[0] == '$'
+            const name = isLibrary ? this.filename.slice(1) : this.filename
+
+            if (!fs.exists(isLibrary, name)) {
+               return "PROGRAM NOT FOUND"
+            }
+            else {
+                const filetype = fs.fileInfo(isLibrary, name)["type"]
+                if (filetype == "B" || filetype == "D") {
+                    return {type: filetype, contents: fs.getTerminalFile(isLibrary, name)}
+                }
+                else {
+                    return "FILE IS OF WRONG TYPE"
+                }
+            }
+        }
     }
 
     protected loadBasic(session: Session.Session, file: string[]) : boolean {
@@ -78,45 +93,49 @@ class GetCmd extends Command {
         return true;
     }
 
+
+}
+/**
+ * Retrieve a file from the file store for this user or the library if the
+ * filename is prefixed with a $. Make the file current.
+ *
+ * The file must be a terminal format file - that is, its type must be B
+ * for a BASIC file or D for a text data file. Other format files (C for
+ * a compiled file or I for a binary record structured file) cannot be
+ * retrieved.
+ */
+class GetCmd extends FileReadingCommand {
+
+    protected constructor(filename: string) {
+        super(filename)
+    }
+
+    public static parse(scanner: Scanner) : GetCmd {
+        return scanner.consumeFilename() ? new GetCmd(scanner.current().text) : null
+    }
+
+
     public execute(session: Session.Session) : void
     {
-        if (this.filename.length > (this.filename[0] == '$' ? 7 : 6)) {
-            session.println(ErrorCode.IllegalProgramName)
+        const contents = this.getRecords(session.fileStore)
+        if (typeof(contents) == "string") {
+            session.println(contents)
         }
-        else
-        {
-            // If the filename starts with a $, it means we should look for it in the
-            // LIBRY account
-            const isLibrary = this.filename[0] == '$'
-            const name = isLibrary ? this.filename.slice(1) : this.filename
+        else  {
 
-            if (!session.fileStore.exists(isLibrary, name)) {
-                session.println("PROGRAM NOT FOUND")
+            // Clear the existing program
+            session.program.delete(1, Scanner.MAX_LINE)
+            session.program.name = "";
+
+            if (contents.type == 'B') {
+                this.loadBasic(session, contents.contents)
+                session.program.name = name
+                session.program.isData = false;
             }
             else {
-                const filetype = session.fileStore.fileInfo(isLibrary, name)["type"]
-                if (filetype == "B" || filetype == "D") {
-
-                    const file = session.fileStore.getTerminalFile(isLibrary, name)
-
-                    // Clear the existing program
-                    session.program.delete(1, Scanner.MAX_LINE)
-                    session.program.name = "";
-
-                    if (filetype == 'B') {
-                        this.loadBasic(session, file)
-                        session.program.name = name
-                        session.program.isData = false;
-                    }
-                    else {
-                        this.loadTerminalFile(session, file)
-                        session.program.name = name
-                        session.program.isData = true
-                    }
-                }
-                else {
-                    session.println("FILE IS OF WRONG TYPE")
-                }
+                this.loadTerminalFile(session, contents.contents)
+                session.program.name = name
+                session.program.isData = true
             }
         }
     }

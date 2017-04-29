@@ -147,10 +147,13 @@ class BasicParser
     public parseCommand(scanner: Scanner) : ASTNode {
 
         if (scanner.consumeCommand("?")) {
-            return this.eoc(scanner, new QuestionCmd())
+            return this.eoc(scanner, new QuestionCmd)
         }
         else if (scanner.consumeCommand("ACC")) {
-            return this.eoc(scanner, new AccountCmd())
+            return this.eoc(scanner, new AccountCmd)
+        }
+        else if (scanner.consumeCommand("APP")) {
+            return this.eoc(scanner, AppendCmd.parse(scanner))
         }
         else if (scanner.consumeCommand("BYE")) {
             return this.eoc(scanner, new ByeCmd)
