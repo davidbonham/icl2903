@@ -179,6 +179,10 @@ for i in range(1, len(sys.argv)):
                         'cp lightpaperfibers.png server/'):
                 subprocess.call(command, shell=True)
 
+    elif verb == 'clean':
+
+        subprocess.call('rm server/tmpfs/MEREWY/*', shell=True)
+        subprocess.call('rm server/tmpfs/LIBRY/*', shell=True)
 
     elif verb == 'serve':
 
