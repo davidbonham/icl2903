@@ -52,7 +52,8 @@ class Program {
     // to the pending input statement via this handler
     protected inputHandler: ((line: string) => boolean)
 
-    constructor(protected readonly session: Session.Session) {
+
+    constructor(public readonly session: Session.Session) {
         this.contents = []
         this.continuable = false
         this._state = ProgramState.Stopped
@@ -426,7 +427,7 @@ class Program {
         throw new Utility.RunTimeError(ErrorCode.ForUnmatched)
     }
 
-    public run(line: number, context: Context, run: boolean) : void {
+    public run(line: number, context: Context, run: boolean, showName: boolean) : void {
         if (this.lineCount() == 0) {
             this.session.println("NO PROGRAM");
         }
@@ -465,7 +466,7 @@ class Program {
                     }
 
                     // We're starting this progam. If it has a name, print it
-                    if (this.name != "") this.session.println(this.name)
+                    if (showName && this.name != "") this.session.println(this.name)
 
                     // When we call step, we want to step onto the first
                     // statement in the program

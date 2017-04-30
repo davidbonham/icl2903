@@ -3,13 +3,12 @@
 
 // Several commands manipulate the loaded file by loading another one into
 // it: GET, APPEND. Derive them from the following base class:
-abstract class FileReadingCommand extends Command {
+class FileLoader {
 
-    protected constructor(protected readonly filename: string) {
-        super()
+    public constructor(protected readonly session: Session.Session, protected readonly filename: string) {
     }
 
-    protected getRecords(fs: FileStore) : {type: string, contents: string[]} | string {
+    public getRecords() : {type: string, contents: string[]} | string {
 
         if (this.filename.length > (this.filename[0] == '$' ? 7 : 6)) {
              return ErrorCode.IllegalProgramName
@@ -20,13 +19,13 @@ abstract class FileReadingCommand extends Command {
             const isLibrary = this.filename[0] == '$'
             const name = isLibrary ? this.filename.slice(1) : this.filename
 
-            if (!fs.exists(isLibrary, name)) {
+            if (!this.session.fileStore.exists(isLibrary, name)) {
                return "PROGRAM NOT FOUND"
             }
             else {
-                const filetype = fs.fileInfo(isLibrary, name)["type"]
+                const filetype = this.session.fileStore.fileInfo(isLibrary, name)["type"]
                 if (filetype == "B" || filetype == "D") {
-                    return {type: filetype, contents: fs.getTerminalFile(isLibrary, name)}
+                    return {type: filetype, contents: this.session.fileStore.getTerminalFile(isLibrary, name)}
                 }
                 else {
                     return "FILE IS OF WRONG TYPE"
@@ -35,7 +34,7 @@ abstract class FileReadingCommand extends Command {
         }
     }
 
-    protected loadBasic(session: Session.Session, file: string[]) : boolean {
+    public loadBasic(file: string[]) : boolean {
 
         const parser = new BasicParser
         let count = 1
@@ -47,15 +46,15 @@ abstract class FileReadingCommand extends Command {
 
             const node = parser.parse(line)
             if (node == null) {
-                session.println("CORRUPT BASIC FILE - PARSE FAILED AT LINE " + count);
-                session.println(ErrorCode.lastError);
+                this.session.println("CORRUPT BASIC FILE - PARSE FAILED AT LINE " + count);
+                this.session.println(ErrorCode.lastError);
             }
             else if (node instanceof LineCmd) {
-                node.execute(session)
+                node.execute(this.session)
             }
             else {
-                session.println("CORRUPT BASIC FILE - AT LINE " + count + " " + node);
-                session.println(line)
+                this.session.println("CORRUPT BASIC FILE - AT LINE " + count + " " + node);
+                this.session.println(line)
                 return false;
             }
         }
@@ -63,7 +62,7 @@ abstract class FileReadingCommand extends Command {
         return true;
     }
 
-    protected loadTerminalFile(session : Session.Session, file: string[]) : boolean {
+    public loadTerminalFile(file: string[]) : boolean {
 
         // This is a terminal format file so we build a TextLine node from
         // each line of text
@@ -79,15 +78,15 @@ abstract class FileReadingCommand extends Command {
 
             const lineNumber = Number.parseInt(lineNumberText)
             if (!lineNumber) {
-                session.println("CORRUPT TERMINAL FORMAT FILE - NO  NUMBER")
-                session.println(ErrorCode.lastError)
+                this.session.println("CORRUPT TERMINAL FORMAT FILE - NO  NUMBER")
+                this.session.println(ErrorCode.lastError)
                 return false;
             }
 
             while (Utility.isSpace(line[p])) p += 1
             const record = line.substring(p)
             const statement = TextLineStmt.parse(record)
-            session.program.add(lineNumber, new SequenceStmt(statement, null));
+            this.session.program.add(lineNumber, new SequenceStmt(statement, null));
         }
 
         return true;
@@ -104,10 +103,11 @@ abstract class FileReadingCommand extends Command {
  * a compiled file or I for a binary record structured file) cannot be
  * retrieved.
  */
-class GetCmd extends FileReadingCommand {
+class GetCmd extends Command {
 
-    protected constructor(filename: string) {
-        super(filename)
+
+    protected constructor(protected readonly filename: string) {
+        super()
     }
 
     public static parse(scanner: Scanner) : GetCmd {
@@ -117,7 +117,9 @@ class GetCmd extends FileReadingCommand {
 
     public execute(session: Session.Session) : void
     {
-        const contents = this.getRecords(session.fileStore)
+        const loader = new FileLoader(session, this.filename)
+
+        const contents = loader.getRecords()
         if (typeof(contents) == "string") {
             session.println(contents)
         }
@@ -128,12 +130,12 @@ class GetCmd extends FileReadingCommand {
             session.program.name = "";
 
             if (contents.type == 'B') {
-                this.loadBasic(session, contents.contents)
+                loader.loadBasic(contents.contents)
                 session.program.name = name
                 session.program.isData = false;
             }
             else {
-                this.loadTerminalFile(session, contents.contents)
+                loader.loadTerminalFile(contents.contents)
                 session.program.name = name
                 session.program.isData = true
             }

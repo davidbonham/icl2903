@@ -4,10 +4,10 @@
 // takes the name of the appended file. The file to be appended must be of
 // the same type as the current content.
 
-class AppendCmd extends FileReadingCommand {
+class AppendCmd extends Command {
 
-    protected constructor(filename: string) {
-        super(filename)
+    protected constructor(protected readonly filename: string) {
+        super()
     }
 
     public static parse(scanner: Scanner) : AppendCmd {
@@ -17,7 +17,8 @@ class AppendCmd extends FileReadingCommand {
     public execute(session: Session.Session) : void {
 
         // Validate the filename and read its contents
-        const contents = this.getRecords(session.fileStore)
+        const loader = new FileLoader(session, this.filename)
+        const contents = loader.getRecords()
         if (typeof(contents) == "string") {
             // We were returned an error message
             session.println(contents)
@@ -27,11 +28,11 @@ class AppendCmd extends FileReadingCommand {
             // Make sure the file is the same type as the currently loaded
             // one then load the lines on top of the existing ones.
             if (contents.type == 'B' && !session.program.isData) {
-                this.loadBasic(session, contents.contents)
+                loader.loadBasic(contents.contents)
                 session.program.name = name
             }
             else if (contents.type == 'D' && session.program.isData) {
-                this.loadTerminalFile(session, contents.contents)
+                loader.loadTerminalFile(contents.contents)
                 session.program.name = name
             }
             else {
