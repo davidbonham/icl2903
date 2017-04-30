@@ -290,7 +290,7 @@ namespace Session {
         }
 
         public run(line: number) {
-            this.program_.run(line, this.commandContext, true)
+            this.program_.run(line, this.commandContext, true, true)
         }
 
         /**
@@ -303,7 +303,7 @@ namespace Session {
          * @param line  line number of the next line to be executed
          */
         public resume(line: number) {
-            this.program_.run(line, this.commandContext, false)
+            this.program_.run(line, this.commandContext, false, false)
         }
 
         public perform(command: string) : boolean {

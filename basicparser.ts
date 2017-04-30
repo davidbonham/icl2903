@@ -52,7 +52,8 @@ class BasicParser
     }
 
     public static parseStatement(scanner: Scanner) : Statement | undefined {
-        return ChangeStmt.parse(scanner)
+        return ChainStmt.parse(scanner)
+            || ChangeStmt.parse(scanner)
             || DataStmt.parse(scanner)
             || DimStmt.parse(scanner)
             || EndStmt.parse(scanner)
