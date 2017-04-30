@@ -232,7 +232,6 @@ class MyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
         varLen = int(s.headers['Content-Length'])
         postVars = s.rfile.read(varLen)
-        print '%d bytes:' % varLen
         print postVars
         request = postVars.split("\n", 1)
         command = request[0].split(" ")
