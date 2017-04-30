@@ -166,7 +166,7 @@ class FileStore
             else if (file.startsWith("+")) {
                 // The message we send is STORE <user> <file>\n<data>
                 const [FILE, DATA, username, filename] = file.split("_")
-                const data = sessionStorage[file];
+                const data = sessionStorage[file.substring(1)]
                 message = "STORE " + username + " " + filename + "\n" + data
             }
             else {
