@@ -16,7 +16,7 @@ class ListCmd extends Command {
         // Interaction with the can't affect the output or state so we
         // can list the entire program and rely on the terminal to
         // discard output when interrupted
-        if (session.program.name != undefined) session.println(session.program.name);
+        if (session.program.name != "") session.println(session.program.name);
 
         session.program.lines(this.range.from, this.range.to).forEach(
             (statement: Statement, line: number)=> {
