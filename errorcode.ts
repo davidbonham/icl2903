@@ -36,6 +36,7 @@ class ErrorCode
     public static NotImp = "NOT YET IMPLEMENTED";
     public static NotImmediate = "STATEMENT NOT ALLOWED IN IMMEDIATE MODE!";
     public static NotIf = "STATEMENT NOT ALLOWED IN IF!";
+    public static DupParam = "PARAMETER/LOCAL OCCURS MULTIPLE TIMES IN USER DEFINED FUNCTION!"
 
     public static lastError = ErrorCode.NoError;
 

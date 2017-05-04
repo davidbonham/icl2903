@@ -292,6 +292,31 @@ class Program {
         }
     }
 
+    public declareUdf(name: string, line: number) {
+        this.udf[name] = line
+    }
+
+    public getUdf(name: string) : DefUdfStmtN | DefUdfStmtS {
+
+        // Find the first line of the user defined function and then get
+        // its first statement
+        if (name in this.udf) {
+            const line = this.udf[name]
+            const sequence = this.contents[Program.lineToIndex(line)]
+            if (sequence instanceof SequenceStmt) {
+                const first = sequence.statement
+                if (first instanceof DefUdfStmtN || first instanceof DefUdfStmtS) {
+                    return first
+                }
+            }
+
+            // If the name was declared, we shouln't get here
+            throw new Utility.RunTimeError(ErrorCode.BugCheck)
+        }
+
+        // We don;t know about this function
+        throw new Utility.RunTimeError(ErrorCode.NoUDF)
+    }
     protected nextStatementIndex(index: number) : number {
 
         // If the next array element exists, then that is the next one

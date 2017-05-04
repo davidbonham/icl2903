@@ -55,6 +55,8 @@ class BasicParser
         return ChainStmt.parse(scanner)
             || ChangeStmt.parse(scanner)
             || DataStmt.parse(scanner)
+            || DefUdfStmtN.parse(scanner)
+            || DefUdfStmtS.parse(scanner)
             || DimStmt.parse(scanner)
             || EndStmt.parse(scanner)
             || ForStmt.parse(scanner)

@@ -329,7 +329,8 @@ abstract class NFunction extends NumericExpression {
             result = FofN.parseFofN(scanner, "TAN", NFunction.TAN)
         else if (scanner.consumeBifn("VAL"))
             result = FofS.parseFofS(scanner, "VAL", NFunction.VAL)
-
+        else if (scanner.consumeUdfn())
+            result = UdfN.parseUdfN(scanner, scanner.current().text)
 
         if (result == null) scanner.restore(start_mark)
         return result
@@ -489,6 +490,106 @@ class FofSSN extends NFunction {
     }
 }
 
+namespace Udf  {
+
+    export function source(name: string, args: (NumericExpression|StringExpression)[]) : string {
+        return name + "(" + args.map(e => e.source()).join(",") + ")"
+    }
+
+    export function parseUdf(scanner: Scanner) : (NumericExpression|StringExpression)[] {
+
+        // Consume a comma-separated list of expressions in parentheses.
+        // The list may be empty
+        let args: (NumericExpression|StringExpression)[] = []
+        let sawComma = false
+        if (scanner.consumeSymbol(TokenType.PAR)) {
+
+            for(;;) {
+
+                // We are positioned after a ( or a ,
+                let arg: NumericExpression|StringExpression
+                arg = NumericExpression.parse(scanner)
+                if (!arg) arg = StringExpression.parse(scanner)
+
+                // No argument parsed
+                if (!arg) break
+
+                // We have consumed an expression, so next we need a comma
+                // or a closing parenthesis
+                args.push(arg)
+                sawComma = false
+
+                // If there is another comma, we must loop for the next
+                // argument, otherwise it must be the closing parenthesis
+                sawComma = scanner.consumeSymbol(TokenType.COMMA)
+                if (!sawComma) break
+            }
+
+            if (scanner.consumeSymbol(TokenType.REN)) return args
+        }
+
+        return null
+    }
+}
+
+class UdfN extends NFunction {
+
+    protected constructor(protected readonly name: string, protected readonly args: (NumericExpression|StringExpression)[]) {
+        super()
+    }
+
+    public static parseUdfN(scanner: Scanner, name: string) : UdfN {
+        // Our caller has already parsed our name
+        const mark = scanner.mark()
+        const args = Udf.parseUdf(scanner)
+        return args ? new UdfN(name, args) : <UdfN>this.fail(scanner, ErrorCode.StatementNotRecognised, mark)
+    }
+
+    public source() : string {
+        return Udf.source(this.name, this.args)
+    }
+
+    public value(context: Context) : number {
+        const definition = context.owner.getUdf(this.name)
+       if (definition instanceof DefUdfStmtN) {
+            return definition.call(context, this.args)
+        }
+        else {
+            // Parser should make this impossible
+            throw new Utility.RunTimeError(ErrorCode.BugCheck)
+        }
+    }
+
+
+}
+class UdfS extends SFunction {
+
+    protected constructor(protected readonly name: string, protected readonly args: (NumericExpression|StringExpression)[]) {
+        super()
+    }
+
+    public static parseUdfS(scanner: Scanner, name: string) : UdfS {
+        // Our caller has already parsed our name
+        const mark = scanner.mark()
+        const args = Udf.parseUdf(scanner)
+        return args ? new UdfS(name, args) : <UdfS>this.fail(scanner, ErrorCode.StatementNotRecognised, mark)
+    }
+
+    public source() : string {
+        return Udf.source(this.name, this.args)
+    }
+
+    public value(context: Context) : string {
+        const definition = context.owner.getUdf(this.name)
+        if (definition instanceof DefUdfStmtS) {
+            return definition.call(context, this.args)
+        }
+        else {
+            // Parser should make this impossible
+            throw new Utility.RunTimeError(ErrorCode.BugCheck)
+        }
+    }
+}
 
 class NBracket extends NumericExpression {
 

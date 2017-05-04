@@ -238,6 +238,9 @@ abstract class SFunction extends StringExpression
         }
         else if (scanner.consumeBifs("TIM$"))
             result = FofX$.parseFofX$(scanner, "TIM$", SFunction.TIM)
+        else if (scanner.consumeUdfs())
+            result = UdfS.parseUdfS(scanner, scanner.current().text)
+
         if (result == null) scanner.restore(start_mark);
         return result
     }
