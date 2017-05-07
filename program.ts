@@ -296,7 +296,7 @@ class Program {
         this.udf[name] = line
     }
 
-    public getUdf(name: string) : DefUdfStmtN | DefUdfStmtS {
+    public getUdf(name: string) : DefStmt {
 
         // Find the first line of the user defined function and then get
         // its first statement
@@ -305,7 +305,7 @@ class Program {
             const sequence = this.contents[Program.lineToIndex(line)]
             if (sequence instanceof SequenceStmt) {
                 const first = sequence.statement
-                if (first instanceof DefUdfStmtN || first instanceof DefUdfStmtS) {
+                if (first instanceof DefExpStmtN || first instanceof DefExpStmtS) {
                     return first
                 }
             }

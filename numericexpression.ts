@@ -551,7 +551,7 @@ class UdfN extends NFunction {
 
     public value(context: Context) : number {
         const definition = context.owner.getUdf(this.name)
-       if (definition instanceof DefUdfStmtN) {
+        if (definition instanceof DefExpStmtN || definition instanceof DefBlockStmtN) {
             return definition.call(context, this.args)
         }
         else {
@@ -581,7 +581,7 @@ class UdfS extends SFunction {
 
     public value(context: Context) : string {
         const definition = context.owner.getUdf(this.name)
-        if (definition instanceof DefUdfStmtS) {
+        if (definition instanceof DefExpStmtS || definition instanceof DefBlockStmtS) {
             return definition.call(context, this.args)
         }
         else {

@@ -72,10 +72,77 @@ class VariableList {
     }
 }
 
-abstract class DefUdf extends Statement {
+/**
+ * This base class represents the single-line forms of the definition
+ * statement. It will be subclassed below for the string and numeric types.
+ */
+abstract class DefStmt extends Statement {
 
     protected constructor(protected readonly name: string, protected readonly parameters: VariableList) {
         super()
+    }
+
+    public static parse(scanner: Scanner) : DefStmt {
+
+        // Expect DEF FN<id> ( variables ) = expression
+        if (!scanner.consumeKeyword("DEF")) return null
+
+        const mark = scanner.mark()
+
+        let name : string
+        let parameters : VariableList
+        let isString  = false
+
+        if (scanner.consumeUdfn()) {
+            name = scanner.current().text
+        }
+        else if (scanner.consumeUdfs())
+        {
+            name = scanner.current().text
+            isString = true
+        }
+        else {
+            throw <DefStmt>this.fail(scanner, ErrorCode.StatementNotRecognised, mark)
+        }
+
+        // Now we must have a parameter list in parentheses
+
+        if (!(scanner.consumeSymbol(TokenType.PAR)
+        &&    (parameters = VariableList.parse(scanner))
+        &&     scanner.consumeSymbol(TokenType.REN))) {
+            throw <DefStmt>this.fail(scanner, ErrorCode.StatementNotRecognised, mark)
+        }
+
+        if (scanner.consumeSymbol(TokenType.EQ)) {
+
+            // Next, we have an '=' followed by an expression of the
+            // correct type. No locals so we can now check that all parameters
+            // are unique
+            if (!VariableList.unique([parameters])) throw <DefStmt>this.fail(scanner, ErrorCode.DupParam, mark)
+
+            if (isString) {
+                const expression = StringExpression.parse(scanner)
+                if (!expression) throw <DefStmt>this.fail(scanner, ErrorCode.StatementNotRecognised, mark)
+                return new DefExpStmtS(name, parameters, expression)
+            }
+            else {
+                const expression = NumericExpression.parse(scanner)
+                if (!expression) throw <DefStmt>this.fail(scanner, ErrorCode.StatementNotRecognised, mark)
+                return new DefExpStmtN(name, parameters, expression)
+
+            }
+        }
+        else {
+
+            // This is the start of a function definition block so we have
+            // an optional list of locals. The locals and parameters must
+            // be unique.
+            const locals = VariableList.parse(scanner)
+            if (!VariableList.unique([parameters, locals])) throw <DefStmt>this.fail(scanner, ErrorCode.DupParam, mark)
+
+            return isString ? new DefBlockStmtS(name, parameters, locals) : new DefBlockStmtN(name, parameters, locals)
+        }
+
     }
 
     public prepare(context: Context, line: number) {
@@ -86,6 +153,18 @@ abstract class DefUdf extends Statement {
         return false
     }
 
+    /**
+     * To evaluate the body of a function definition, we need to define
+     * a local context containing the arguments to the function and any
+     * local variables it declares so that references to them don't get
+     * looked up in the caller's context. The argument list is a sequence
+     * of expressions that must be evaluated in the caller's context and
+     * then bound to scalar variables in the local context with the matching
+     * argument names. Local variables must be set up to be undefined.
+     *
+     * @param context   the caller's context
+     * @param args      the arguments to the function, as expression trees
+     */
     protected setupContext(context: Context, args: (StringExpression|NumericExpression)[]) : Context {
 
         // We need to check that the right number of arguments have been
@@ -123,45 +202,12 @@ abstract class DefUdf extends Statement {
     }
 }
 
-class DefUdfStmtN extends DefUdf {
+class DefExpStmtN extends DefStmt {
 
-    protected constructor(name: string,
-                          parameters: VariableList,
-                          protected readonly expression: NumericExpression) {
+    public constructor(name: string,
+                       parameters: VariableList,
+                       protected readonly expression: NumericExpression) {
         super(name, parameters)
-    }
-
-    public static parse(scanner: Scanner) : DefUdfStmtN {
-
-        // Expect DEF FN<id> ( variables ) = numeric expression
-        if (!scanner.consumeKeyword("DEF")) return null
-
-        const mark = scanner.mark()
-
-        let name : string
-        let parameters : VariableList
-        let expression : NumericExpression
-
-        if (scanner.consumeUdfn()) {
-            const name = scanner.current().text
-
-            if (scanner.consumeSymbol(TokenType.PAR)
-            &&  (parameters = VariableList.parse(scanner))
-            &&  scanner.consumeSymbol(TokenType.REN)
-            &&  scanner.consumeSymbol(TokenType.EQ)
-            &&  (expression = NumericExpression.parse(scanner))) {
-
-                // The parameter names must be unique
-                if (VariableList.unique([parameters])) {
-                    return new DefUdfStmtN(name, parameters, expression)
-                }
-                else {
-                    throw <DefUdfStmtN>this.fail(scanner, ErrorCode.DupParam, mark)
-                }
-            }
-        }
-
-        throw <DefUdfStmtN>this.fail(scanner, ErrorCode.StatementNotRecognised, mark)
     }
 
     public source() : string {
@@ -179,46 +225,14 @@ class DefUdfStmtN extends DefUdf {
     }
 }
 
-class DefUdfStmtS extends DefUdf {
+class DefExpStmtS extends DefStmt {
 
-    protected constructor(name: string,
-                          parameters: VariableList,
-                          protected readonly expression: StringExpression) {
+    public constructor(name: string,
+                       parameters: VariableList,
+                       protected readonly expression: StringExpression) {
         super(name, parameters)
     }
 
-    public static parse(scanner: Scanner) : DefUdfStmtS {
-
-        // Expect DEF FN<id> ( variables ) = numeric expression
-        if (!scanner.consumeKeyword("DEF")) return null
-
-        const mark = scanner.mark()
-
-        let name : string
-        let parameters : VariableList
-        let expression : StringExpression
-
-        if (scanner.consumeUdfs()) {
-            const name = scanner.current().text
-
-            if (scanner.consumeSymbol(TokenType.PAR)
-            &&  (parameters = VariableList.parse(scanner))
-            &&  scanner.consumeSymbol(TokenType.REN)
-            &&  scanner.consumeSymbol(TokenType.EQ)
-            &&  (expression = StringExpression.parse(scanner))) {
-
-                // The parameter names must be unique
-                if (VariableList.unique([parameters])) {
-                    return new DefUdfStmtS(name, parameters, expression)
-                }
-                else {
-                    throw <DefUdfStmtS>this.fail(scanner, ErrorCode.DupParam, mark)
-                }
-            }
-        }
-
-        throw <DefUdfStmtS>this.fail(scanner, ErrorCode.StatementNotRecognised, mark)
-    }
 
     public source() : string {
         return "DEF " + this.name + "(" + this.parameters.source() + ")=" + this.expression.source()
@@ -235,26 +249,58 @@ class DefUdfStmtS extends DefUdf {
     }
 }
 
+class DefBlockStmtN extends DefStmt {
 
+    public constructor(name: string,
+                       parameters: VariableList,
+                       protected readonly locals: VariableList) {
+        super(name, parameters)
+    }
+
+    public source() : string {
+        return "DEF " + this.name + "(" + this.parameters.source() + ")" + this.locals.source()
+    }
+
+    public call(context: Context, args: (StringExpression|NumericExpression)[]): number {
+        // Create a new child context in which we will bind our parameters to the
+        // values of the argument expression.
+        const child = this.setupContext(context, args)
+        return 0
+    }
+}
+
+class DefBlockStmtS extends DefStmt {
+
+    public constructor(name: string,
+                       parameters: VariableList,
+                       protected readonly locals: VariableList) {
+        super(name, parameters)
+    }
+
+    public source() : string {
+        return "DEF " + this.name + "(" + this.parameters.source() + ")" + this.locals.source()
+    }
+
+    public call(context: Context, args: (StringExpression|NumericExpression)[]): string {
+        // Create a new child context in which we will bind our parameters to the
+        // values of the argument expression.
+        const child = this.setupContext(context, args)
+        return ""
+    }
+}
+
+
+/**
+ * Now for block definitions. Here, the DEF statement has no expression
+ * after it - instead, it has an optional list of local variables which
+ * must be scalars
+ */
 /*
- lazy val parameter: PackratParser[Either[SScalarRef,NScalarRef]] =
-      ( sscalarref ^^ { case s => Left(s)  }
-      | nscalarref ^^ { case n => Right(n) }
-      )
-    lazy val stmt_defnexpn: PackratParser[Statement] =
-      "DEF" ~ nudf ~ "(" ~ repsep(parameter, ",") ~ ")" ~ "=" ~ nexpr ^^ {
-        case _ ~ id ~ _ ~ args ~ _ ~ _ ~ rv => DefFnExpN(id, args, rv)
-      }
-
     lazy val stmt_defnblkn: PackratParser[Statement] =
       "DEF" ~ nudf ~ "(" ~ repsep(parameter, ",") ~ ")" ~ repsep(parameter, ",") ^^ {
         case _ ~ id ~ _ ~ args ~ _ ~ locals => DefFnBlkN(id, args, locals)
     }
 
-    lazy val stmt_defnexps: PackratParser[Statement] =
-      "DEF" ~ sudf ~ "(" ~ repsep(parameter, ",") ~ ")" ~ "=" ~ sexpr ^^ {
-        case _ ~ id ~ _ ~ args ~ _ ~ _ ~ rv => DefFnExpS(id, args, rv)
-      }
 
     lazy val stmt_defnblks: PackratParser[Statement] =
       "DEF" ~ sudf ~ "(" ~ repsep(parameter, ",") ~ ")" ~ repsep(parameter, ",") ^^ {
