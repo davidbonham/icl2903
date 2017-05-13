@@ -40,6 +40,10 @@ class ControlStack {
         this.stack.push(new EndFrame)
     }
 
+    public empty() : boolean {
+        return this.stack.length == 0
+    }
+
     public doUDF(lineno: number, args: Expression[]) : void {
         this.stack.push(new UDFFrame(this.context.nextStmtIndex, args))
     }
@@ -102,6 +106,9 @@ class ControlStack {
                 throw new Utility.RunTimeError(ErrorCode.NoFor)
             }
             else if (top instanceof EndFrame) {
+                throw new Utility.RunTimeError(ErrorCode.NoFor)
+            }
+            else if (top instanceof UDFFrame) {
                 throw new Utility.RunTimeError(ErrorCode.NoFor)
             }
             else if (top instanceof NextFrame) {

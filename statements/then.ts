@@ -17,4 +17,8 @@ class Then extends Statement {
     public renumber(lineMap: number[]) : void{
         if (this.line in lineMap) this.line = lineMap[this.line]
     }
+
+    public compile(vm: Vm) {
+        vm.emit([Op.GO, this.line])
+    }
 }

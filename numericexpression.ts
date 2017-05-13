@@ -133,6 +133,10 @@ class NLiteral extends NumericExpression {
 
         return new NLiteral(value);
     }
+
+    public compile(vm: Vm) {
+        vm.emit([Op.PUSH, this._value])
+    }
 }
 
 class Negate extends NumericExpression {
@@ -156,6 +160,10 @@ class Negate extends NumericExpression {
             if (subexpression) return new Negate(subexpression)
         }
         return null
+    }
+
+    public compile(vm: Vm) {
+        vm.emit([Op.NEG])
     }
 }
 
@@ -373,6 +381,12 @@ class FofN extends NFunction {
                                <NumericExpression>args[0],
                               ) : null
    }
+
+    public compile(vm: Vm) {
+       this.operand.compile(vm)
+       vm.emit([Op.NFN, this.func])
+   }
+
 }
 
 class FofS extends NFunction {
@@ -409,6 +423,11 @@ class FofS extends NFunction {
                                <StringExpression>args[0],
                               ) : null
    }
+
+   public compile(vm: Vm) {
+       this.operand.compile(vm)
+       vm.emit([this.func, Op.NFS])
+   }
 }
 
 class FofX extends NFunction {
@@ -429,6 +448,11 @@ class FofX extends NFunction {
     public static parseFofX(scanner: Scanner, name: string, func: ()=>number) : FofX {
         return new FofX(name, func);
     }
+
+    public compile(vm: Vm) {
+       vm.emit([this.func, Op.NF])
+   }
+
 }
 
 class FofSS extends NFunction {
@@ -457,6 +481,13 @@ class FofSS extends NFunction {
                                 <StringExpression>args[1],
                                ) : null
     }
+
+    public compile(vm: Vm) {
+       this.op1.compile(vm)
+       this.op2.compile(vm)
+       vm.emit([this.func, Op.NFSS])
+   }
+
 }
 
 class FofSSN extends NFunction {
@@ -488,6 +519,15 @@ class FofSSN extends NFunction {
                                  <NumericExpression>args[2],
                                 ) : null
     }
+
+    public compile(vm: Vm) {
+       this.op1.compile(vm)
+       this.op2.compile(vm)
+       this.op3.compile(vm)
+       vm.emit([this.func, Op.NFSSN])
+   }
+
+
 }
 
 namespace Udf  {
@@ -560,6 +600,9 @@ class UdfN extends NFunction {
         }
     }
 
+    public compile(vm: Vm) {
+        Utility.bugcheck("unimplemented")
+    }
 
 }
 class UdfS extends SFunction {
@@ -589,6 +632,10 @@ class UdfS extends SFunction {
             throw new Utility.RunTimeError(ErrorCode.BugCheck)
         }
     }
+
+    public compile(vm: Vm) {
+        Utility.bugcheck("unimplemented")
+    }
 }
 
 class NBracket extends NumericExpression {
@@ -613,6 +660,10 @@ class NBracket extends NumericExpression {
             }
         }
         return null
+    }
+
+    public compile(vm: Vm) {
+        this.nexpr.compile(vm)
     }
 }
 
@@ -676,6 +727,46 @@ class NBinOp extends NumericExpression {
 
         return result;
     }
+
+    public compile(vm: Vm) {
+
+        this.lhs.compile(vm)
+        this.rhs.compile(vm)
+
+        switch (this.op.type)
+        {
+            case TokenType.KEY:
+                if (this.op.text == "MIN") {
+                    vm.emit1(Op.MIN)
+                }
+                else if (this.op.text == "MAX") {
+                    vm.emit1(Op.MAX)
+                }
+                else {
+                    throw new Utility.RunTimeError(ErrorCode.BugCheck);
+                }
+                break;
+            case TokenType.ADD:
+                vm.emit1(Op.ADD)
+                break;
+            case TokenType.SUB:
+                vm.emit1(Op.SUB)
+                break;
+            case TokenType.MUL:
+                vm.emit1(Op.MUL)
+                break;
+            case TokenType.DIV:
+                vm.emit1(Op.DIV)
+                break;
+            case TokenType.POW1:
+            case TokenType.POW2:
+                vm.emit1(Op.POW)
+                break;
+            default:
+                throw new Utility.RunTimeError(ErrorCode.BugCheck);
+        }
+    }
+
 }
 
 
@@ -685,6 +776,8 @@ abstract class NRef extends NumericExpression
     public abstract  hasConstantSubscripts() : boolean
     public prepare(context: Context) {
     }
+
+    public abstract compileAssign(vm: Vm) : void
 
     public static parse(scanner: Scanner) : NRef  {
         if (!scanner.consumeNid()) {
@@ -749,6 +842,24 @@ class NScalarRef extends NRef {
     public hasConstantSubscripts() : boolean {
         return false
     }
+
+    public compile(vm: Vm) {
+        vm.emit([Op.SN, this.name])
+    }
+
+    public compileAssign(vm: Vm) {
+        // The value to be assigned is on the top of the stack so all we
+        // need to do is set the variable
+        vm.emit([Op.SSN, this.name])
+    }
+
+    public static SSN(context: Context, id: string, value: number) {
+        context.setScalar(id, value)
+    }
+
+    public static SN(context: Context, id: string) : number {
+        return context.getNumber(id)
+    }
 }
 
 class NVectorRef extends NRef
@@ -776,6 +887,20 @@ class NVectorRef extends NRef
     public  prepare(context: Context) : void {
         context.dimVector(this.name, this.col.value(context))
     }
+
+    public compile(vm: Vm) {
+        this.col.compile(vm)
+        vm.emit([this.name, Op.VN])
+    }
+
+    public compileAssign(vm: Vm) {
+        // The value to be assigned is on the top of the stack so we need
+        // to generate code to evaluate the vector index and then assign
+        // the value to the array element
+        this.col.compile(vm)
+        vm.emit([this.name, Op.SVN])
+    }
+
 }
 
 class NArrayRef extends NRef
@@ -807,4 +932,20 @@ class NArrayRef extends NRef
     {
         context.dimArray(this.name, this.col.value(context), this.row.value(context))
     }
+
+    public compile(vm: Vm) {
+        this.col.compile(vm)
+        this.row.compile(vm)
+        vm.emit([this.name, Op.AN])
+    }
+
+    public compileAssign(vm: Vm) {
+        // The value to be assigned is on the top of the stack so we need
+        // to generate code to evaluate the array indices and then assign
+        // the value to the array element
+        this.col.compile(vm)
+        this.row.compile(vm)
+        vm.emit([this.name, Op.SAN])
+    }
+
 }

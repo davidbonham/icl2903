@@ -89,6 +89,20 @@ class NLetStmt extends LetStmt {
         }
         return true;
     }
+
+    public compile(vm: Vm) {
+
+        // Generate code to leave the value on the top of the stack
+        this.rhs.compile(vm)
+
+        // For each left value, generate code to assign the top of the
+        // stack to the reference. Drop the value at the end.
+        for (const nref of this.lvs) {
+            nref.compileAssign(vm)
+        }
+        vm.emit1(Op.DROP)
+
+    }
 }
 
 
@@ -166,4 +180,20 @@ class SLetStmt extends LetStmt {
         }
         return true;
     }
+
+    public compile(vm: Vm) {
+
+        // Generate code to leave the value on the top of the stack
+        this.rhs.compile(vm)
+
+        // For each left value, generate code to assign the top of the
+        // stack to the reference. Drop the value at the end.
+        for (const sref of this.lvs) {
+            //sref.compileAssign(vm)
+            Utility.bugcheck("unimplemented")
+        }
+        vm.emit1(Op.DROP)
+
+    }
+
 }

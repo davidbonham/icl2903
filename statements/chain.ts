@@ -113,7 +113,7 @@ class ChainStmt extends Statement {
 
             // If we have a line number, set that as the next one else
             // atart from the beginning
-            context.owner.run(this.line, context.owner.session.commandContext, true, false)
+            context.owner.run(this.line, context.owner.session.commandContext, false)
         }
         else {
             throw new Utility.RunTimeError(ErrorCode.FileWrongType)

@@ -12,17 +12,7 @@ class Program {
 
 
     // Our preogram is a sparse array of statement nodes, index by the line
-    // number scaled by 100. Thus the line
-    //
-    // 355 PRINT "A"!PRINT "B!"!RETURN
-    // 9999 END
-    //
-    // Is represented as
-    //
-    // contents[35500] = <print "A">
-    // contents[35501] = <print "B">
-    // contents[33502] = <return>
-    // contents[999900] = <end>
+    // number
     protected contents: Statement[]
 
     // A map from one line number to the next. It is computed when needed and
@@ -52,6 +42,12 @@ class Program {
     // to the pending input statement via this handler
     protected inputHandler: ((line: string) => boolean)
 
+    protected vm : Vm
+
+    // Map from a statement line number to the index  of its first generated
+    // instruction
+    protected vmmap : number[]
+
 
     constructor(public readonly session: Session.Session) {
         this.contents = []
@@ -64,36 +60,11 @@ class Program {
 
         this._channels = new Channels
         this._channels.set(0, new TTYChannel(session))
+        this.vm = new Vm()
+        this.vm.clear()
+        this.vmmap = []
     }
 
-    /**
-     * Convert an index in the contents array to its line number
-     *
-     * Because we expand statement sequences into individial statements
-     * before execution, we scale line numbers by 100 to allow these to
-     * be stored between lines:
-     *
-     * 10 A=1!B=2!c=3       =>    1000 A=1
-     * 99 END                     1001 B=1
-     *                            1001 C=2
-     *                            9900 END
-     *
-     * Map the index we are given into its owning line number
-     *
-     * @param index
-     */
-    protected static indexToLine(index: number) : number {
-        return Math.floor(index / 100)
-    }
-
-    /**
-     * Convert a line number into its statement index in the contents array
-     *
-     * @param line a line number in the range 1..9999
-     */
-    protected static lineToIndex(line: number) : number {
-        return line*100
-    }
 
     public dump() {
         wto("program name=" + this.name_ + " continuable=" + this.continuable + " contents size=" + this.statementCount())
@@ -120,7 +91,7 @@ class Program {
         this._channels.closeChannels()
 
         // Now display the interrupt on the session tty.
-        this.session.println("LINE " + Program.indexToLine(context.stmtIndex) + " BREAK IN" )
+        this.session.println("LINE " + context.stmtIndex + " BREAK IN" )
         this._state = ProgramState.Interrupted
     }
 
@@ -133,7 +104,7 @@ class Program {
     public lineCount() : number {
         let count = 0
         this.contents.forEach((statement: Statement, line: number) => {
-            if ((line % 100) === 0) count += 1
+            count += 1
         })
         return count
     }
@@ -145,7 +116,7 @@ class Program {
         // expanding each line.
         let count = 0
         this.contents.forEach((statement: Statement, line: number) => {
-            if ((line % 100) === 0) count += statement.source().length + 4
+            count += statement.source().length + 4
         })
 
         return count
@@ -155,16 +126,16 @@ class Program {
     public lines(from: number, to: number) : Statement[] {
 
         // Convert line numbers to indices
-        const low = Program.lineToIndex(from)
-        const high = Program.lineToIndex(to)
+        const low = from
+        const high = to
 
         // Return statements in the range ignoring statement sequence
         // expansions. Convert indices to line numbers
         let result : Statement[] = []
         this.contents.forEach(
             (statement : Statement, index: number) => {
-                if (low <= index && index <= high && (index % 100) == 0) {
-                    result[Program.indexToLine(index)] = statement
+                if (low <= index && index <= high) {
+                    result[index] = statement
                 }
             }
         )
@@ -181,17 +152,7 @@ class Program {
         // Delete any line at this number
         this.delete(lineNo, lineNo)
 
-        // Simple statements can be inserted immediately but sequences must
-        // be expanded
-        this.contents[Program.lineToIndex(lineNo)] = statement
-
-        if (statement instanceof SequenceStmt) {
-            let offset = 1
-            for (let node : SequenceStmt = statement.next; node != null; node = node.next) {
-                this.contents[Program.lineToIndex(lineNo)+offset] = node.statement
-                offset++
-            }
-        }
+        this.contents[lineNo] = statement
         this.staleLineMap = true
     }
 
@@ -203,8 +164,8 @@ class Program {
 
         // We have been given line numbers so convert these to the largest
         // range of indices
-        const low = Program.lineToIndex(from)
-        const high = Program.lineToIndex(to+1) - 1
+        const low = from
+        const high = to - 1
 
         // Keep lines not in that range
         let result : Statement[] = []
@@ -243,14 +204,10 @@ class Program {
             let lineMap : number[] = []
             let count = 0
             this.contents.forEach((stmt: Statement, index: number) => {
-
-                if ((index % 100) == 0) {
-
-                    // This is the main statement of each line, work out its
-                    // new line number and add it to the map
-                    lineMap[Program.indexToLine(index)] = start + count*step
-                    count += 1
-                }
+                // This is the main statement of each line, work out its
+                // new line number and add it to the map
+                lineMap[index] = start + count*step
+                count += 1
             })
 
             // Now ask each statement to renumber itself. We need to consider
@@ -268,18 +225,9 @@ class Program {
             this.contents.forEach((stmt: Statement, index: number) => {
 
                 // Work out the new index for this statement
-                if ((index % 100) == 0) {
 
-                    // This is the first statement in the line. It's new
-                    // line number comes from the line map
-                    const currentLine = lineMap[Program.indexToLine(index)]
-                    currentIndex = Program.lineToIndex(currentLine)
-                }
-                else {
-                    // This is an expansion statement so it goes one index
-                    // after the previous statement
-                    currentIndex += 1
-                }
+                const currentLine = lineMap[index]
+                currentIndex = currentLine
 
                 newContents[currentIndex] = stmt
             })
@@ -302,7 +250,7 @@ class Program {
         // its first statement
         if (name in this.udf) {
             const line = this.udf[name]
-            const sequence = this.contents[Program.lineToIndex(line)]
+            const sequence = this.contents[line]
             if (sequence instanceof SequenceStmt) {
                 const first = sequence.statement
                 if (first instanceof DefExpStmtN || first instanceof DefExpStmtS) {
@@ -319,28 +267,16 @@ class Program {
     }
     protected nextStatementIndex(index: number) : number {
 
-        // If the next array element exists, then that is the next one
-        // otherwise we have reached the end of this line of statements
-        // and need to locate the next line.
-
-        // Fast check for next statement on this line
-        if (this.contents[index+1] != undefined) {
-            return index+1
-        }
-
         // We need to use the line map to advance to the next line so make
         // sure it is not stale
         let previousLineNumber : number = 0
         if (this.staleLineMap) {
             this.nextLineMap = []
             this.contents.forEach((value, index) => {
-                if ((index % 100) == 0) {
-                    // This is the start of a statement. If there was a previous
-                    // line, set its map entry to this line
-                    const line = Program.indexToLine(index)
-                    this.nextLineMap[previousLineNumber] = line
-                    previousLineNumber = line
-                }
+                // This is the start of a statement. If there was a previous
+                // line, set its map entry to this line
+                this.nextLineMap[previousLineNumber] = index
+                previousLineNumber = index
             })
 
             // Complete the last entry - there is no following statement
@@ -351,7 +287,7 @@ class Program {
         }
 
         // Get the next line number and convert it into its index
-        return Program.lineToIndex(this.nextLineMap[Program.indexToLine(index)])
+        return this.nextLineMap[index]
     }
 
     protected closeChannels() : void {
@@ -362,6 +298,7 @@ class Program {
         this.udf = {}
         this.closeChannels();
         context.clear();
+        this.vm.clear()
     }
 
     protected checkLastStatementEnd() : void {
@@ -382,7 +319,7 @@ class Program {
                 // the expanded statement
                 if (this.contents[index] instanceof EndStmt) return
 
-                throw new Utility.RunTimeError(ErrorCode.NoEnd, Program.indexToLine(index))
+                throw new Utility.RunTimeError(ErrorCode.NoEnd, index)
             }
         }
     }
@@ -397,7 +334,7 @@ class Program {
         // need up be update to specify the current line number
         this.contents.forEach((value, index) => {
             try {
-                value.prepare(context, Program.indexToLine(index))
+                value.prepare(context, index)
             }
             catch (e) {
                 if (e instanceof Utility.RunTimeError) {
@@ -452,105 +389,161 @@ class Program {
         throw new Utility.RunTimeError(ErrorCode.ForUnmatched)
     }
 
-    public run(line: number, context: Context, run: boolean, showName: boolean) : void {
+    /**
+     * Find the FNEND statement matching this DEF.
+     *
+     * Advance from the current statement (which is expected to be a DEF)
+     * until we find an FNEND. We return the statement number. We also
+     * check that none of the intervening statements is another DEF or an
+     * END statement.
+     *
+     * We need to deal in statement indices rather than line numbers so
+     * that the following will work:
+     *
+     * 10 DEF FNA(X)!FNA=4!FNEND
+     *
+     * @param defStmt: line number of the def statement
+     */
+    public findFnend(defStmt: number) : number {
+
+        // Iterate over the expanded statement in line number order
+        const defIndex = defStmt
+        for (let nextIndex = this.nextStatementIndex(defIndex); nextIndex != 0; nextIndex = this.nextStatementIndex(nextIndex)) {
+
+            let statement: Statement = this.contents[nextIndex]
+
+            // Deal with statement sequences by inspecting only the first
+            if (statement instanceof SequenceStmt) {
+                statement = statement.statement
+            }
+
+            // If this is a NEXT statement specifying the same variable,
+            // we have found the answer
+            if (statement instanceof FnendStmt) {
+                return nextIndex
+            }
+            else if (statement instanceof DefStmt || statement instanceof EndStmt) {
+                throw new Utility.RunTimeError(ErrorCode.DefInDef)
+            }
+        }
+
+        // We didn't find an FNEND after this DEF
+        throw new Utility.RunTimeError(ErrorCode.DefNoFnend)
+    }
+
+    protected vmLine() : number {
+        const wantedPC = this.vm.mark(0) - 1
+        let previousLine : number
+
+        // The indices are line numbers so this is almost always a very
+        // sparse array, typically 9 our of 10 indices unused, hence forEach
+        this.vmmap.forEach((pc, line) => {
+            if (pc > wantedPC) {
+                // This line starts after the wanted PC so the previous
+                // line is the one we want.
+                return previousLine
+            }
+            previousLine = line
+        })
+
+        // Here, we didn't find a line with a PC later than the wanted one
+        // so we must want the last line in the program
+        return previousLine
+    }
+
+    public pcForLine(line: number) {
+        return line in this.vmmap ? this.vmmap[line] : null
+    }
+
+    public resume(line: number, context: Context, showName: boolean) : void {
+
+        if (!this.continuable) {
+            this.session.println("NO PROGRAM")
+            return
+        }
+
+        if (line) {
+
+            // The user wants to continue from this line number. We
+            // need to make sure it exists and the set position the
+            // VM to the first code in that statement.
+            if (!(line in this.vmmap)) {
+                this.session.println("LINE " + line + " DOES NOT EXIST");
+                return
+            }
+
+            this.vm.goto(this.vmmap[line])
+        }
+
+        // We're starting this progam. If it has a name, print it
+        if (showName && this.name != "") this.session.println(this.name)
+        this._state = ProgramState.Running
+    }
+
+    public run(line: number, context: Context, showName: boolean) : void {
+
         if (this.lineCount() == 0) {
             this.session.println("NO PROGRAM");
+            return
         }
-        else if (!run && !this.continuable) {
-            // We've been asked to continue execution but we're not in a fit
-            // state to do that
-            this.session.println("NO PROGRAM");
+
+        try {
+
+            // Make sure any state kept from a previous interrupted run is discarded
+            this.clearState(context);
+
+            // Before we start running we need to search the program and
+            // Make sure the program ends with END
+            this.checkLastStatementEnd();
+
+            // Compile each statement into object code
+            this.compile()
+
+            // For each DIM statement, allocate its arrays
+            // For each DATA statement, queue its data
+            this.prepareProgram(context)
+
+            // Run from the specified line or the start if none specified
+            const fromLine = line == 0 ? this.nextStatementIndex(0) : line
+            if (!(fromLine in this.vmmap)) {
+                // The specified line does not exist
+                this.session.println("LINE " + line + " DOES NOT EXIST");
+                return
+            }
+
+            this.vm.goto(this.vmmap[fromLine])
+
+            // We're starting this progam. If it has a name, print it
+            if (showName && this.name != "") this.session.println(this.name)
+
+            this._state = ProgramState.Running
+
+            // We've run the program so it can be continued
+            this.continuable = true;
         }
-        else {
-            try {
-
-                if (run) {
-                    // Run from the specified line or the start if none specified
-                    context.stmtIndex = line == 0 ? this.nextStatementIndex(0) : line*100
-                }
-                else {
-                    // Continue from the specified line or the next if none specified
-                    context.stmtIndex = line == 0 ? context.nextStmtIndex : Program.lineToIndex(line)
-                }
-
-                if (this.contents[context.stmtIndex] != undefined) {
-
-                    if (run) {
-
-                        // Make sure any state kept from a previous interrupted run is discarded
-                        //currentContext = new Context(None, this)
-                        this.clearState(context);
-
-                        // Before we start running we need to search the program and
-                        // Make sure the program ends with END
-                        this.checkLastStatementEnd();
-
-                        // For each DIM statement, allocate its arrays
-                        // For each DATA statement, queue its data
-                        this.prepareProgram(context);
-                    }
-
-                    // We're starting this progam. If it has a name, print it
-                    if (showName && this.name != "") this.session.println(this.name)
-
-                    // When we call step, we want to step onto the first
-                    // statement in the program
-                    context.nextStmtIndex = context.stmtIndex
-                    this._state = ProgramState.Running
-
-                    // We've run the program so it can be continued
-                    this.continuable = true;
-                }
-                else {
-                    this.session.println("LINE " + line + " DOES NOT EXIST");
-                }
-            }
-            catch (e) {
-                this.session.println("LINE " + e.line + " " + e.error);
-            }
+        catch (e) {
+            if (e instanceof Error) throw e
+               this.session.println("LINE " + e.line + " " + e.error);
         }
     }
 
-    public  step(context: Context, line: string) {
+    public step(context: Context, line: string) {
 
         let result = ErrorCode.NoError;
 
         try {
 
             if (this._state == ProgramState.Running) {
-                context.stmtIndex = context.nextStmtIndex
-
-                if (this.contents[context.stmtIndex] == undefined) throw new Utility.RunTimeError("CALLED LINE NUMBER DOES NOT EXIST");
 
                 // The program is running and positioned at the next statement
-                // to execute. Execute the current statement. If all goes well,
-                // move on to the next statement for next time. Otherwise, if
-                // there was an error, leave us positioned here.
-
-                // Set up the default action of advancing to the next statement
-                // in the context.
-                context.nextStmtIndex = this.nextStatementIndex(context.stmtIndex)
-
-                // Execute the current statement
-                this.contents[context.stmtIndex].execute(context)
+                // to execute. Execute the next operation
+                this.vm.step(100, context)
             }
             else {
                 // Input has been provided for the current input statement
                 const more = this.inputHandler(line)
                 this._state = more ? ProgramState.Input : this._oldState
             }
-
-            //if (this.state == ProgramState.Interrupted) throw new Utility.RunTimeError("BREAK IN");
-
-                //if (running) {
-                //
-                //  // Still running so advance to the next statement. A transfer of control
-                //  // will be recorded in the context
-                //  val candidate = indexOf(context.nextLineNumber)
-                //  if (candidate == -1) throw new RunTimeError(0, "CALLED LINE NUMBER DOES NOT EXIST")
-                //
-                //  context.currentStatementIndex = candidate
-                //}
         }
         catch (e)
         {
@@ -560,13 +553,13 @@ class Program {
             // This will ensure we are at the start of the line on all
             // terminal format channels.
             this._channels.closeChannels()
-
-            // Now display the error on the session tty.
-            result = e.error
-            this.session.println("LINE " + Program.indexToLine(context.stmtIndex) + " " + e.error)
             this._state = ProgramState.Interrupted
-        }
+            result = e.error
 
+            // Now display the error on the session tty. Get the current pc
+            // from the vm and look up the line number
+            this.session.println("LINE " + this.vmLine() + " " + e.error)
+        }
 
         // If there was an error, return it (although we have already displayed
         // it) to tell the caller it happened.
@@ -592,5 +585,19 @@ class Program {
         //    tty.writes("");
         //    tty.eol();
         this.session.crlf()
+    }
+
+    public compile() {
+
+        this.vm.clear()
+        this.vmmap = []
+        this.contents.forEach((statement, index) => {
+
+            // Record the location of this line in the map
+            this.vmmap[index] = this.vm.mark(0)
+            statement.compile(this.vm)
+            wto("vm " + this.vmmap[index] + ": " + index + " " + statement.source())
+        })
+        this.vm.dump()
     }
 }

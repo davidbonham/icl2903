@@ -37,6 +37,11 @@ class ErrorCode
     public static NotImmediate = "STATEMENT NOT ALLOWED IN IMMEDIATE MODE!";
     public static NotIf = "STATEMENT NOT ALLOWED IN IF!";
     public static DupParam = "PARAMETER/LOCAL OCCURS MULTIPLE TIMES IN USER DEFINED FUNCTION!"
+    public static FnendNotinUdf = "FNEND STATEMENT NOT IN USER DEFINED FUNCTION!"
+    public static DefNoFnend = "USER DEFINED FUNCTION HAS NO FNEND!"
+    public static DefInDef = "STATEMENT NOT ALLOWED IN USER DEFINED FUNCTION!"
+    public static CalledLineNot = "CALLED LINE NUMBER DOES NOT EXIST"
+
 
     public static lastError = ErrorCode.NoError;
 

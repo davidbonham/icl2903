@@ -63,5 +63,9 @@ namespace BIF {
 
             return hasExponent ? number + "E" + exponent : number
         }
+
+        public compile(vm: Vm) {
+            Utility.bugcheck("not implemented");
+        }
     }
 }

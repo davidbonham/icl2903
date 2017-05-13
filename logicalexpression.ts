@@ -71,6 +71,8 @@ abstract class LogicalExpression {
     public abstract source() : string
 
     public abstract value(context: Context) : boolean
+
+    public abstract compile(vm: Vm) : void
 }
 
 
@@ -87,6 +89,11 @@ class LNot extends LogicalExpression {
 
     public value(context: Context) : boolean {
         return !this.expr.value(context)
+    }
+
+    public compile(vm: Vm) {
+        this.expr.compile(vm)
+        vm.emit1(Op.NOT)
     }
 
     public static parse(scanner: Scanner) : LNot {
@@ -113,6 +120,10 @@ class LBracket extends LogicalExpression {
 
     public value(context: Context) : boolean {
         return this.expr.value(context);
+    }
+
+    public compile(vm: Vm) {
+        this.expr.compile(vm)
     }
 
     public static parse(scanner: Scanner) : LBracket {
@@ -170,6 +181,23 @@ class LNumericRelation extends LogicalExpression {
                 throw new Utility.RunTimeError(ErrorCode.BugCheck)
         }
     }
+
+    public compile(vm: Vm) {
+        this.lhs.compile(vm)
+        this.rhs.compile(vm)
+        switch (this.op.type) {
+            case TokenType.EQ: vm.emit1(Op.EQ); break
+            case TokenType.GE: vm.emit1(Op.GE); break
+            case TokenType.GT: vm.emit1(Op.GT); break
+            case TokenType.HASH:
+            case TokenType.NE: vm.emit1(Op.NE); break
+            case TokenType.LE: vm.emit1(Op.LE); break
+            case TokenType.LT: vm.emit1(Op.LT); break
+            default:
+                throw new Utility.RunTimeError(ErrorCode.BugCheck)
+        }
+    }
+
 
     protected static parseRelation(scanner: Scanner) : Token
     {
@@ -236,6 +264,23 @@ class LStringRelation extends LogicalExpression {
         }
     }
 
+    public compile(vm: Vm) {
+        this.lhs.compile(vm)
+        this.rhs.compile(vm)
+        switch (this.op.type) {
+            case TokenType.EQ: vm.emit1(Op.EQ); break
+            case TokenType.GE: vm.emit1(Op.GE); break
+            case TokenType.GT: vm.emit1(Op.GT); break
+            case TokenType.HASH:
+            case TokenType.NE: vm.emit1(Op.NE); break
+            case TokenType.LE: vm.emit1(Op.LE); break
+            case TokenType.LT: vm.emit1(Op.LT); break
+            default:
+                throw new Utility.RunTimeError(ErrorCode.BugCheck)
+        }
+
+    }
+
     protected static parseRelation(scanner: Scanner) : Token {
 
         if (scanner.consumeSymbol(TokenType.EQ)
@@ -290,5 +335,28 @@ class LBinOp extends LogicalExpression {
         if (this.op.text == "EQV") return lhs == rhs
         if (this.op.text == "IMP") return !lhs || rhs
         throw new Utility.RunTimeError(ErrorCode.BugCheck)
+    }
+
+    public compile(vm: Vm) {
+        this.lhs.compile(vm)
+        this.rhs.compile(vm)
+        if (this.op.text == "AND") {
+            vm.emit1(Op.AND)
+        }
+        else if (this.op.text == "OR") {
+            vm.emit1(Op.OR)
+        }
+        else if (this.op.text == "XOR") {
+            vm.emit1(Op.NE)
+        }
+        else if (this.op.text == "EQV") {
+            vm.emit1(Op.EQ)
+        }
+        else if (this.op.text == "IMP") {
+            vm.emit1(Op.IMP)
+        }
+        else {
+            throw new Utility.RunTimeError(ErrorCode.BugCheck)
+        }
     }
 }

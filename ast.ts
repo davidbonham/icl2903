@@ -68,7 +68,9 @@ abstract class Statement extends ASTNode {
 
     public abstract source() : string
     public abstract execute(context: Context) : boolean
-
+    public  compile(vm : Vm) : void {
+        Utility.bugcheck("not implemented");
+    }
     public isImmediateStatement() : boolean {
         return true;
     }
@@ -107,6 +109,11 @@ class SequenceStmt extends Statement
         //    the loop
         // 2. In IF 1=1 THEN 50!GOTO 400, we won't execute the GOTO
      }
+
+    public compile(vm: Vm) {
+        this.statement.compile(vm)
+        if (this.next) this.next.compile(vm)
+    }
 
     public prepare(context: Context, line: number) : void {
 
@@ -174,6 +181,9 @@ abstract class Expression extends ASTNode {
         return expressions
     }
 
+    public compile(vm: Vm) {
+        Utility.bugcheck("not implemented");
+    }
 }
 
 

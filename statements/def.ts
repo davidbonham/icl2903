@@ -223,6 +223,10 @@ class DefExpStmtN extends DefStmt {
         // our result
         return this.expression.value(child)
     }
+
+    public compile(vm: Vm) {
+        Utility.bugcheck("unimplemented")
+    }
 }
 
 class DefExpStmtS extends DefStmt {
@@ -247,9 +251,16 @@ class DefExpStmtS extends DefStmt {
         // our result
         return this.expression.value(child)
     }
+
+    public compile(vm: Vm) {
+        Utility.bugcheck("unimplemented")
+    }
+
 }
 
 class DefBlockStmtN extends DefStmt {
+
+    protected line: number
 
     public constructor(name: string,
                        parameters: VariableList,
@@ -261,12 +272,54 @@ class DefBlockStmtN extends DefStmt {
         return "DEF " + this.name + "(" + this.parameters.source() + ")" + this.locals.source()
     }
 
+    public prepare(context: Context, line: number) {
+
+        // Check that there is no DEF or END before the next FNEND and that
+        // there is an FNEND.
+        this.line = context.owner.findFnend(line)
+        context.owner.declareUdf(this.name, line)
+    }
+
     public call(context: Context, args: (StringExpression|NumericExpression)[]): number {
         // Create a new child context in which we will bind our parameters to the
         // values of the argument expression.
         const child = this.setupContext(context, args)
-        return 0
+
+        // The legal limits of the statements we can execute as part of
+        // the function definition block
+        const firstIndex = this.line
+        const fnendIndex = child.owner.findFnend(this.line)
+
+        // Start at the first statement following the DEF and continue
+        // executing them until we hit the FNEND or attempt to leave the
+        // block.
+        child.nextStmtIndex = firstIndex
+        while (child.nextStmtIndex != fnendIndex) {
+
+            if (firstIndex <= child.nextStmtIndex && child.nextStmtIndex < fnendIndex) {
+                child.owner.step(child, "")
+            }
+            else {
+                throw new Utility.RunTimeError(ErrorCode.InvExit)
+            }
+        }
+
+        // We're at the end of the function definition block. Our child
+        // context's control stack should be empty with no active FOR or
+        // GOSUBs.
+        if (!child.controlstack.empty()) {
+            throw new Utility.RunTimeError(ErrorCode.InvExit)
+        }
+
+        // All is well so our result is the current value of our name in
+        // the child context
+        return child.getNumber(this.name)
     }
+
+    public compile(vm: Vm) {
+        Utility.bugcheck("unimplemented")
+    }
+
 }
 
 class DefBlockStmtS extends DefStmt {
@@ -287,27 +340,15 @@ class DefBlockStmtS extends DefStmt {
         const child = this.setupContext(context, args)
         return ""
     }
+
+    public compile(vm: Vm) {
+        Utility.bugcheck("unimplemented")
+    }
+
 }
 
 
-/**
- * Now for block definitions. Here, the DEF statement has no expression
- * after it - instead, it has an optional list of local variables which
- * must be scalars
- */
-/*
-    lazy val stmt_defnblkn: PackratParser[Statement] =
-      "DEF" ~ nudf ~ "(" ~ repsep(parameter, ",") ~ ")" ~ repsep(parameter, ",") ^^ {
-        case _ ~ id ~ _ ~ args ~ _ ~ locals => DefFnBlkN(id, args, locals)
-    }
-
-
-    lazy val stmt_defnblks: PackratParser[Statement] =
-      "DEF" ~ sudf ~ "(" ~ repsep(parameter, ",") ~ ")" ~ repsep(parameter, ",") ^^ {
-        case _ ~ id ~ _ ~ args ~ _ ~ locals => DefFnBlkS(id, args, locals)
-    }
-
-    lazy val stmt_fnend: PackratParser[Statement] = "FNEND" ^^^ Fnend()
+/*    lazy val stmt_fnend: PackratParser[Statement] = "FNEND" ^^^ Fnend()
 
     lazy val stmt_fnletn: PackratParser[Statement] =
       nudf ~ "=" ~ nexpr ^^ { case id ~ _ ~ rv => FnLetN(id, rv)}

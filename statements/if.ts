@@ -10,6 +10,13 @@ class IfStmt extends Statement {
         return this.condition.value(context) ? this.consequence.execute(context) : true
     }
 
+    public compile(vm: Vm) {
+        this.condition.compile(vm)
+        const jmp = vm.mark(2)
+        this.consequence.compile(vm)
+        const here = vm.mark(0)
+        vm.patch(jmp, [Op.JF, here])
+    }
     public renumber(lineMap: number[]) : void {
         this.consequence.renumber(lineMap)
     }

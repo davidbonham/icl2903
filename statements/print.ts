@@ -3,6 +3,7 @@
 abstract class PrintItem {
     public abstract render(channel: TerminalChannel, context: Context) : void
     public abstract source() : string
+    public abstract compile(vm: Vm) : void
 }
 
 class PrintComma extends PrintItem {
@@ -13,6 +14,10 @@ class PrintComma extends PrintItem {
 
     public render(channel: TerminalChannel, context: Context) {
         channel.comma();
+    }
+
+    public compile(vm: Vm) {
+        vm.emit1(Op.TTC)
     }
 }
 
@@ -26,6 +31,11 @@ class PrintSemi extends PrintItem {
     public render(channel: TerminalChannel, context: Context) {
         // Nothing to render
     }
+
+    public compile(vm: Vm) {
+        // Nothing to perform
+    }
+
 }
 
 class PrintTab extends PrintItem {
@@ -44,6 +54,14 @@ class PrintTab extends PrintItem {
         const column = Math.floor(this.tab.value(context))
         channel.tab(column - 1);
     }
+
+    public compile(vm: Vm) {
+        // Evaluate the tab setting
+        this.tab.compile(vm)
+        // Then tab to it
+        vm.emit1(Op.TTT)
+    }
+
 }
 
 class PrintN extends PrintItem {
@@ -59,6 +77,11 @@ class PrintN extends PrintItem {
     public render(channel: TerminalChannel, context: Context) : void {
         channel.formatNumber(this.value.value(context));
     }
+
+    public compile(vm: Vm) {
+        this.value.compile(vm)
+        vm.emit1(Op.TTN)
+    }
 }
 
 class PrintLine extends PrintItem {
@@ -70,6 +93,10 @@ class PrintLine extends PrintItem {
     public render(channel: TerminalChannel, context: Context) : void {
         channel.wrch("\n")
         channel.eol()
+    }
+
+    public compile(vm: Vm) {
+        vm.emit1(Op.TTL)
     }
 }
 
@@ -86,6 +113,12 @@ class PrintS extends PrintItem {
     public render(channel: TerminalChannel, context: Context) {
         channel.text(this.value.value(context));
     }
+
+    public compile(vm: Vm) {
+        this.value.compile(vm)
+        vm.emit1(Op.TTS)
+    }
+
 }
 
 class PrintStmt extends Statement {
@@ -233,5 +266,73 @@ class PrintStmt extends Statement {
 
         tty.end();
         return true;
+    }
+
+    protected static currentOutputChannel : TerminalChannel
+
+    public static SOC(context: Context, channel: number) {
+        const channelNumber = Utility.round(channel)
+        PrintStmt.currentOutputChannel = <TerminalChannel>context.owner.channels.get(channelNumber)
+    }
+
+    public static TTB(context: Context) {
+        PrintStmt.currentOutputChannel.begin()
+    }
+
+    public static TTC(context: Context) {
+        PrintStmt.currentOutputChannel.comma()
+    }
+
+    public static TTE(context: Context) {
+        PrintStmt.currentOutputChannel.end()
+    }
+
+    public static TTF(context: Context, format: string) {
+        PrintStmt.currentOutputChannel.setFormat(format)
+    }
+
+    public static TTL(context: Context) {
+        PrintStmt.currentOutputChannel.wrch("\n")
+        PrintStmt.currentOutputChannel.eol()
+    }
+
+    public static TTN(context: Context, value: number) {
+        PrintStmt.currentOutputChannel.formatNumber(value)
+    }
+
+    public static TTS(context: Context, text: string) {
+        PrintStmt.currentOutputChannel.text(text)
+    }
+
+    public static TTT(context: Context, column: number) {
+        // Evaluate the tab setting, rounded down to an integer and
+        // converted to a zero-based offset
+        const rounded = Utility.round(column)
+        PrintStmt.currentOutputChannel.tab(rounded - 1);
+    }
+
+    public compile(vm: Vm) {
+
+        // Code to calculate the channel number and establish it as the
+        // current output channel
+        if (this.channel) {
+            this.channel.compile(vm)
+        }
+        else {
+            vm.emit([Op.PUSH, 0])
+        }
+        vm.emit1(Op.SOC)
+
+        // Code to establish any format string
+        if (this.using) {
+            this.using.compile(vm)
+            vm.emit1(Op.TTF)
+        }
+
+        vm.emit1(Op.TTB)
+        this.items.forEach(item => {
+            item.compile(vm)
+        })
+        vm.emit1(Op.TTE)
     }
 }

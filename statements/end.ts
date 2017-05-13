@@ -26,4 +26,12 @@ class EndStmt extends Statement {
         // Use the error handling mechanism to generate the end message
         throw new Utility.RunTimeError("DONE");
     }
+
+    public compile(vm: Vm) {
+        vm.emit1(Op.END)
+    }
+
+    public static exec() {
+        throw new Utility.RunTimeError("DONE");
+    }
 }
