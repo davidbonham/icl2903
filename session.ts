@@ -159,7 +159,9 @@ namespace Session {
                         totalMs += dt
                         totalTicks += ticks
                         ticks = 0
+                        wto("session running yield")
                         event = yield({state: Terminal.State.Running})
+                        wto("session running end yield")
                         startTime=endTime
                     }
                     ticks += 1
@@ -182,7 +184,9 @@ namespace Session {
                     // If the program is running but waiting for input, the
                     // user can interrupt or supply a line of input. We are
                     // not busy, the user can type.
+                    wto("session input yield")
                     const event : Terminal.Event = yield({state: Terminal.State.Waiting})
+                    wto("session input end yield")
                     switch (event.kind) {
 
                         case Terminal.EventKind.Interrupt:

@@ -587,6 +587,7 @@ abstract class SRef extends StringExpression {
     }
 
     public abstract hasConstantSubscripts() : boolean
+    public abstract compileAssign(vm: Vm) : void
 
     public prepare(context: Context) {
     }
@@ -613,6 +614,21 @@ class SScalarRef extends SRef {
     public hasConstantSubscripts() : boolean {
         return false
     }
+
+    public compileAssign(vm: Vm) {
+        // The value to be assigned is on the top of the stack so all we
+        // need to do is set the variable
+        vm.emit([Op.SSS, this.name])
+    }
+
+    public static SSS(context: Context, id: string, value: string) {
+        context.set$(id, value)
+    }
+
+    public static SS(context: Context, id: string) : string {
+        return context.getString(id)
+    }
+
 }
 
 class SVectorRef extends SRef {
@@ -640,6 +656,23 @@ class SVectorRef extends SRef {
     public prepare(context: Context) : void {
         context.dimVector$(this.name, this.col.value(context))
     }
+
+    public compileAssign(vm: Vm) {
+        // The value to be assigned is on the top of the stack so we need
+        // to generate code to evaluate the vector index and then assign
+        // the value to the array element
+        this.col.compile(vm)
+        vm.emit([Op.SVS, this.name])
+    }
+
+    public static SVS(context: Context, id: string, col: number, value: string) : void {
+        context.setVector$(id, col, value)
+    }
+
+    public static VS(context: Context, id: string, col: number) : string {
+        return context.getVector$(id, col)
+    }
+
 }
 
 class SArrayRef extends SRef {
@@ -668,5 +701,23 @@ class SArrayRef extends SRef {
     public prepare(context: Context) : void {
         context.dimArray$(this.name, this.col.value(context), this.row.value(context));
     }
+
+    public compileAssign(vm: Vm) {
+        // The value to be assigned is on the top of the stack so we need
+        // to generate code to evaluate the array indices and then assign
+        // the value to the array element
+        this.col.compile(vm)
+        this.row.compile(vm)
+        vm.emit([Op.SAN, this.name])
+    }
+
+    public static AS(context: Context, id: string, col: number, row: number) : string {
+        return context.getArray$(id, col, row)
+    }
+
+    public static SAS(context: Context, id: string, col: number, row: number, value: string) : void {
+        context.setArray$(id, col, row, value)
+    }
+
 }
 

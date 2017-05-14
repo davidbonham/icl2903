@@ -34,6 +34,8 @@ class Program {
     // The I/O channels as seen by this program. Channel 0 is the tty
     protected _channels: Channels
     public get channels() { return this._channels; }
+    protected currentInput: TerminalChannel
+    protected currentOutput: TerminalChannel
 
     // Locations of user defined functions as a map from name to index
     protected udf: { [name: string]: number; }
@@ -60,6 +62,8 @@ class Program {
 
         this._channels = new Channels
         this._channels.set(0, new TTYChannel(session))
+        this.currentInput = <TerminalChannel>this._channels.get(0)
+        this.currentOutput = <TerminalChannel>this._channels.get(0)
         this.vm = new Vm()
         this.vm.clear()
         this.vmmap = []
@@ -91,7 +95,7 @@ class Program {
         this._channels.closeChannels()
 
         // Now display the interrupt on the session tty.
-        this.session.println("LINE " + context.stmtIndex + " BREAK IN" )
+        this.session.println("LINE " + this.vmLine() + " BREAK IN" )
         this._state = ProgramState.Interrupted
     }
 
@@ -292,6 +296,24 @@ class Program {
 
     protected closeChannels() : void {
         // No channel I/O yet
+        this.currentInput = <TerminalChannel>this._channels.get(0)
+        this.currentOutput = <TerminalChannel>this._channels.get(0)
+    }
+
+    public setInputChannel(channel: TerminalChannel) {
+        this.currentInput = channel
+    }
+
+    public setOutputChannel(channel: TerminalChannel) {
+        this.currentOutput = channel
+    }
+
+    public getOutputChannel() : TerminalChannel{
+        return this.currentOutput
+    }
+
+    public getInputChannel() : TerminalChannel{
+        return this.currentInput
     }
 
     protected clearState(context: Context) : void {
@@ -431,8 +453,8 @@ class Program {
         throw new Utility.RunTimeError(ErrorCode.DefNoFnend)
     }
 
-    protected vmLine() : number {
-        const wantedPC = this.vm.mark(0) - 1
+    public vmLine() : number {
+        const wantedPC = this.vm.getPC() - 1
         let previousLine : number
 
         // The indices are line numbers so this is almost always a very
@@ -528,7 +550,7 @@ class Program {
     }
 
     public step(context: Context, line: string) {
-
+        wto("program.step line=" + line + "state=" + ProgramState[this._state])
         let result = ErrorCode.NoError;
 
         try {
@@ -536,13 +558,18 @@ class Program {
             if (this._state == ProgramState.Running) {
 
                 // The program is running and positioned at the next statement
-                // to execute. Execute the next operation
+                // to execute. Execute some operations. This will terminate if
+                // we need to interact to allow a line to be printed or
+                // input read from the terminal.
+                wto("calling vm.step")
                 this.vm.step(100, context)
+                wto("called vm.step")
             }
             else {
                 // Input has been provided for the current input statement
-                const more = this.inputHandler(line)
-                this._state = more ? ProgramState.Input : this._oldState
+                this.vm.inputLine(line)
+                this._state = this._oldState
+                wto("called vm.InputLine state=" + ProgramState[this._state])
             }
         }
         catch (e)
@@ -572,10 +599,11 @@ class Program {
         this._state = ProgramState.Input
     }
 
-    public stepInput(text: string) : void {
-        const more = this.inputHandler(text)
-        this._state = more ? ProgramState.Input : this._oldState
+    public needInput() : void {
+        this._oldState = this._state
+        this._state = ProgramState.Input
     }
+
 
     public terminate() {
         // Wind down at the end of a program. There may be pending output

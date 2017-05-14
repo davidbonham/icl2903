@@ -426,7 +426,7 @@ class FofS extends NFunction {
 
    public compile(vm: Vm) {
        this.operand.compile(vm)
-       vm.emit([this.func, Op.NFS])
+       vm.emit([Op.NFS, this.func])
    }
 }
 
@@ -450,7 +450,7 @@ class FofX extends NFunction {
     }
 
     public compile(vm: Vm) {
-       vm.emit([this.func, Op.NF])
+       vm.emit([Op.NF, this.func])
    }
 
 }
@@ -485,7 +485,7 @@ class FofSS extends NFunction {
     public compile(vm: Vm) {
        this.op1.compile(vm)
        this.op2.compile(vm)
-       vm.emit([this.func, Op.NFSS])
+       vm.emit([Op.NFSS, this.func])
    }
 
 }
@@ -524,7 +524,7 @@ class FofSSN extends NFunction {
        this.op1.compile(vm)
        this.op2.compile(vm)
        this.op3.compile(vm)
-       vm.emit([this.func, Op.NFSSN])
+       vm.emit([Op.NFSSN, this.func])
    }
 
 
@@ -890,7 +890,7 @@ class NVectorRef extends NRef
 
     public compile(vm: Vm) {
         this.col.compile(vm)
-        vm.emit([this.name, Op.VN])
+        vm.emit([Op.VN, this.name])
     }
 
     public compileAssign(vm: Vm) {
@@ -898,8 +898,17 @@ class NVectorRef extends NRef
         // to generate code to evaluate the vector index and then assign
         // the value to the array element
         this.col.compile(vm)
-        vm.emit([this.name, Op.SVN])
+        vm.emit([Op.SVN, this.name])
     }
+
+    public static SVN(context: Context, id: string, col: number, value: number) : void {
+        context.setVector(id, col, value)
+    }
+
+    public static VN(context: Context, id: string, col: number) : number {
+        return context.getVector(id, col)
+    }
+
 
 }
 
@@ -914,6 +923,14 @@ class NArrayRef extends NRef
 
     public value(context: Context) : number {
         return context.getArray(this.name, this.col.value(context), this.row.value(context))
+    }
+
+    public static AN(context: Context, id: string, col: number, row: number) : number {
+        return context.getArray(id, col, row)
+    }
+
+    public static SAN(context: Context, id: string, col: number, row: number, value: number) : void {
+        context.setArray(id, col, row, value)
     }
 
     public source() : string {
@@ -936,7 +953,7 @@ class NArrayRef extends NRef
     public compile(vm: Vm) {
         this.col.compile(vm)
         this.row.compile(vm)
-        vm.emit([this.name, Op.AN])
+        vm.emit([Op.AN, this.name])
     }
 
     public compileAssign(vm: Vm) {
@@ -945,7 +962,7 @@ class NArrayRef extends NRef
         // the value to the array element
         this.col.compile(vm)
         this.row.compile(vm)
-        vm.emit([this.name, Op.SAN])
+        vm.emit([Op.SAN, this.name])
     }
 
 }

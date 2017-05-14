@@ -67,10 +67,11 @@ abstract class Command extends ASTNode {
 abstract class Statement extends ASTNode {
 
     public abstract source() : string
-    public abstract execute(context: Context) : boolean
     public  compile(vm : Vm) : void {
         Utility.bugcheck("not implemented");
     }
+    public abstract execute(context: Context) : boolean
+
     public isImmediateStatement() : boolean {
         return true;
     }

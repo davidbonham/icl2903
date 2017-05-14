@@ -268,47 +268,45 @@ class PrintStmt extends Statement {
         return true;
     }
 
-    protected static currentOutputChannel : TerminalChannel
-
     public static SOC(context: Context, channel: number) {
         const channelNumber = Utility.round(channel)
-        PrintStmt.currentOutputChannel = <TerminalChannel>context.owner.channels.get(channelNumber)
+        context.owner.setOutputChannel(<TerminalChannel>context.owner.channels.get(channelNumber))
     }
 
     public static TTB(context: Context) {
-        PrintStmt.currentOutputChannel.begin()
+        context.owner.getOutputChannel().begin()
     }
 
     public static TTC(context: Context) {
-        PrintStmt.currentOutputChannel.comma()
+        context.owner.getOutputChannel().comma()
     }
 
     public static TTE(context: Context) {
-        PrintStmt.currentOutputChannel.end()
+        context.owner.getOutputChannel().end()
     }
 
     public static TTF(context: Context, format: string) {
-        PrintStmt.currentOutputChannel.setFormat(format)
+        context.owner.getOutputChannel().setFormat(format)
     }
 
     public static TTL(context: Context) {
-        PrintStmt.currentOutputChannel.wrch("\n")
-        PrintStmt.currentOutputChannel.eol()
+        context.owner.getOutputChannel().wrch("\n")
+        context.owner.getOutputChannel().eol()
     }
 
     public static TTN(context: Context, value: number) {
-        PrintStmt.currentOutputChannel.formatNumber(value)
+        context.owner.getOutputChannel().formatNumber(value)
     }
 
     public static TTS(context: Context, text: string) {
-        PrintStmt.currentOutputChannel.text(text)
+        context.owner.getOutputChannel().text(text)
     }
 
     public static TTT(context: Context, column: number) {
         // Evaluate the tab setting, rounded down to an integer and
         // converted to a zero-based offset
         const rounded = Utility.round(column)
-        PrintStmt.currentOutputChannel.tab(rounded - 1);
+        context.owner.getOutputChannel().tab(rounded - 1);
     }
 
     public compile(vm: Vm) {

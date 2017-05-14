@@ -127,6 +127,34 @@ class InputStmt extends Statement {
                                   : this.fileInput(context, channel)
     }
 
+    public static INN(context: Context) {
+
+        // If there is pending input, process it otherwise tell the VM to
+        // yield so that the UI can get some
+    }
+
+    public static SIC(context: Context, channel: number) {
+        const channelNumber = Utility.round(channel)
+        context.owner.setInputChannel(<TerminalChannel>context.owner.channels.get(channelNumber))
+    }
+
+    public compile(vm: Vm) {
+
+        // Emit code to set the input channel and reset it ready for input
+        if (this.channel) {
+            this.channel.compile(vm)
+        }
+        else {
+            vm.emit([Op.PUSH, 0])
+        }
+        vm.emit([Op.SIC, Op.INR])
+
+        // Emit code to read a value for each item and store it
+        this.items.forEach(item => item.compile(vm))
+
+        // Deal with any left over items
+        vm.emit1(Op.INE)
+    }
     protected inputHandler(context: Context, tty: TerminalChannel, line: string) : boolean {
 
         // The UI has provided us with a line of text. Split it up into
@@ -173,7 +201,7 @@ class InputStmt extends Statement {
 
     protected interactiveInput(context: Context, tty: TTYChannel) : boolean {
 
-        // We can;t do interactive input without the cooperation of the
+        // We can't do interactive input without the cooperation of the
         // session handler. Establush an input handler in the program and
         // switch its state to Input. This will cause subsequence session
         // ticks to pass any input to the handler until it is satisfied
@@ -239,6 +267,7 @@ abstract  class InputItem
 {
     public abstract source() : string
     public abstract store(context: Context, token: string) : boolean
+    public abstract compile(vm: Vm) : void
 }
 
 class NumericItem extends InputItem {
@@ -258,6 +287,17 @@ class NumericItem extends InputItem {
         this.nref.set(context, value);
         return true;
     }
+
+    public compile(vm: Vm) {
+        // Arrange for a number to be read and placed on the top of the
+        // stack
+        vm.emit1(Op.INN)
+
+        // Assign to the variable. Because assignment normally leaves the
+        // value on the stack, drop it explicitly
+        this.nref.compileAssign(vm)
+        vm.emit1(Op.DROP)
+    }
 }
 
 class StringItem extends InputItem {
@@ -274,4 +314,16 @@ class StringItem extends InputItem {
         this.sref.set$(context, token);
         return true;
     }
+
+    public compile(vm: Vm) {
+        // Arrange for a string to be read and placed on the top of the
+        // stack
+        vm.emit1(Op.INS)
+
+        // Assign to the variable. Because assignment normally leaves the
+        // value on the stack, drop it explicitly
+        this.sref.compileAssign(vm)
+        vm.emit1(Op.DROP)
+    }
+
 }
