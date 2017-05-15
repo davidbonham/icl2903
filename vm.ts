@@ -11,9 +11,9 @@ enum Op {
     GT,         // V V          => V > V        test inequality
     IMP,        // L L          => L
     INE,        //                              end the current input statement
-    INN,        //              =>              input a number
+    INN,        //              => N            input a number
     INR,        //              =>              reset the input buffer
-    INS,        //              =>              input s string
+    INS,        //              => S            input s string
     JMP,        //                              jump unconditionally
     JF,         // L            =>
     LE,         // V V          => V <= V       test inequality
@@ -32,12 +32,21 @@ enum Op {
     NOT,        // L            => !L           logical not
     OR,         // L L          => L
     POW,        // N1 N2        => N1^N2        power
+    PUSH,
+    RDN,        //              => N            read datum ito variable
+    RDS,        //              => S            read datum ito variable
     SN,         //              => N            value of numeric scalar
     SUB,        // N1 N2        => N1-N2        subtract
-    PUSH,
     SAN,        // N C R S      => N,           Set Array Numeric
     SIC,        // N            =>              Set Input Channel
     SOC,        // N            =>              Set Output Channel
+    SF,
+    SFN,
+    SFSN,
+    SFSNN,
+    SFSS,
+    SFSSN,
+    SFSSS,
     SSN,        // N S          => N,           Set Scalar Numeric
     SVN,        // N C S        => N,           Set Vector Numeric
     TTB,        //              =>              Begin tty output
@@ -225,7 +234,16 @@ class Vm {
         Vm.opmap[Op.OR]     = Vm.OR
         Vm.opmap[Op.POW]    = Vm.POW
         Vm.opmap[Op.PUSH]   = Vm.PUSH
+        Vm.opmap[Op.RDN]    = Vm.RDN
+        Vm.opmap[Op.RDS]    = Vm.RDS
         Vm.opmap[Op.SAN]    = Vm.SAN
+        Vm.opmap[Op.SF]     = Vm.SF
+        Vm.opmap[Op.SFN]    = Vm.SFN
+        Vm.opmap[Op.SFSN]   = Vm.SFSN
+        Vm.opmap[Op.SFSNN]  = Vm.SFSNN
+        Vm.opmap[Op.SFSS]   = Vm.SFSS
+        Vm.opmap[Op.SFSSN]  = Vm.SFSSN
+        Vm.opmap[Op.SFSSS]  = Vm.SFSSS
         Vm.opmap[Op.SIC]    = Vm.SIC
         Vm.opmap[Op.SN]     = Vm.SN
         Vm.opmap[Op.SOC]    = Vm.SOC
@@ -484,6 +502,20 @@ class Vm {
         EndStmt.exec()
     }
 
+    /**
+     * INput a Number and place it on the stacl
+     *
+     * Attempt to read a number from the existing contents of the input
+     * buffer. If the number cannot be read, we need to interact with the
+     * user to get another line. We do this by telling the program we need
+     * more input, zeroing our count to exit the execution loop and resetting
+     * the PC to its last value so that the next time the VM is entered,
+     * this instruction is re-executes, hopefully with a new line of input
+     * ready for it.
+     *
+     * @param vm
+     * @param context
+     */
     protected static INN(vm: Vm, context: Context) : void {
         const value = vm.inputBuffer.readNumber(context)
         if (!value) {
@@ -588,6 +620,17 @@ class Vm {
         vm.push(result)
     }
 
+    /**
+     * No OPeration
+     *
+     * NOPs are used as placeholders in the object code when we know we
+     * will need to patch them later on (for example, with the destination
+     * address of a branch). If we encounter one during execution, it means
+     * something has gone wrong during compilation.
+     *
+     * @param vm
+     * @param context
+     */
     protected static NOP(vm: Vm, context: Context) : void {
         vm.bug("NOP encounted => incomplete patch")
     }
@@ -597,6 +640,15 @@ class Vm {
 
     protected static POW(vm: Vm, context: Context) : void {
         vm.binaryOpNN(Math.pow)
+    }
+
+    protected static RDN(vm: Vm, context: Context) : void {
+        vm.push(context.data.readNumber())
+    }
+
+    protected static RDS(vm: Vm, context: Context) : void {
+
+        vm.push(context.data.readString())
     }
 
     protected static SAN(vm: Vm, context: Context) : void {
@@ -613,6 +665,62 @@ class Vm {
         const col = vm.popNumber()
         const value = vm.peekString()
         SArrayRef.SAS(context, id, col, row, value)
+    }
+
+    protected static SF(vm: Vm, context: Context) : void {
+        const f : () => string = <() => string>vm.code[vm.pc++]
+        const result = f()
+        vm.push(result)
+    }
+
+    protected static SFN(vm: Vm, context: Context) : void {
+        const fn : (a: number) => string = <(a: number) => string>vm.code[vm.pc++]
+        const a : number = vm.popNumber()
+        const result = fn(a)
+        vm.push(result)
+    }
+
+    protected static SFSN(vm: Vm, context: Context) : void {
+        const fsn : (a: string, b: number) => string = <(a: string, b: number) => string>vm.code[vm.pc++]
+        const b : number = vm.popNumber()
+        const a : string = vm.popString()
+        const result = fsn(a, b)
+        vm.push(result)
+    }
+
+    protected static SFSNN(vm: Vm, context: Context) : void {
+        const fsnn : (a: string, b: number, c: number) => string = <(a: string, b: number, c: number) => string>vm.code[vm.pc++]
+        const c : number = vm.popNumber()
+        const b : number = vm.popNumber()
+        const a : string = vm.popString()
+        const result = fsnn(a, b, c)
+        vm.push(result)
+    }
+
+    protected static SFSSN(vm: Vm, context: Context) : void {
+        const fssn : (a: string, b: string, c: number) => string = <(a: string, b: string, c: number) => string>vm.code[vm.pc++]
+        const c : number = vm.popNumber()
+        const b : string = vm.popString()
+        const a : string = vm.popString()
+        const result = fssn(a, b, c)
+        vm.push(result)
+    }
+
+    protected static SFSS(vm: Vm, context: Context) : void {
+        const fss : (a: string, b: string) => string = <(a: string, b: string) => string>vm.code[vm.pc++]
+        const b : string = vm.popString()
+        const a : string = vm.popString()
+        const result = fss(a, b)
+        vm.push(result)
+    }
+
+    protected static SFSSS(vm: Vm, context: Context) : void {
+        const fsss : (a: string, b: string, c: string) => string = <(a: string, b: string, c: string) => string>vm.code[vm.pc++]
+        const c : string = vm.popString()
+        const b : string = vm.popString()
+        const a : string = vm.popString()
+        const result = fsss(a, b, c)
+        vm.push(result)
     }
 
     protected static SIC(vm: Vm, context: Context) : void {
