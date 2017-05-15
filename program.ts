@@ -550,7 +550,6 @@ class Program {
     }
 
     public step(context: Context, line: string) {
-        wto("program.step line=" + line + "state=" + ProgramState[this._state])
         let result = ErrorCode.NoError;
 
         try {
@@ -561,15 +560,12 @@ class Program {
                 // to execute. Execute some operations. This will terminate if
                 // we need to interact to allow a line to be printed or
                 // input read from the terminal.
-                wto("calling vm.step")
-                this.vm.step(100, context)
-                wto("called vm.step")
+                this.vm.step(10, context)
             }
             else {
                 // Input has been provided for the current input statement
                 this.vm.inputLine(line)
                 this._state = this._oldState
-                wto("called vm.InputLine state=" + ProgramState[this._state])
             }
         }
         catch (e)
