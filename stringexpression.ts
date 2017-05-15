@@ -267,6 +267,11 @@ class FofN$ extends SFunction
         const args = Expression.parseArgList(scanner, "N")
         return args ? new FofN$(name, func, <NumericExpression>args[0]) : null
     }
+
+    public compile(vm: Vm) {
+        this.op.compile(vm)
+        vm.emit([Op.SFN, this.func])
+    }
 }
 
 class FofX$ extends SFunction {
@@ -286,6 +291,11 @@ class FofX$ extends SFunction {
     public static parseFofX$(scanner: Scanner, name: string, func: () => string) : FofX$ {
         return new FofX$(name, func);
     }
+
+    public compile(vm: Vm) {
+        vm.emit([Op.SF, this.func])
+    }
+
 }
 
 class FofSS$ extends SFunction {
@@ -310,6 +320,12 @@ class FofSS$ extends SFunction {
     public static parseFofSS$(scanner: Scanner, name: string, func: (s1: string, s2: string) => string) : FofSS$ {
         const args = Expression.parseArgList(scanner, "SS")
         return args ? new FofSS$(name, func, <StringExpression>args[0], <StringExpression>args[1]) : null
+    }
+
+    public compile(vm: Vm) {
+        this.s1.compile(vm)
+        this.s2.compile(vm)
+        vm.emit([Op.SFSS, this.func])
     }
 }
 
@@ -344,6 +360,14 @@ class FofSSS$ extends SFunction
                                   <StringExpression>args[2],
                                   ) : null
     }
+
+    public compile(vm: Vm) {
+        this.s1.compile(vm)
+        this.s2.compile(vm)
+        this.s3.compile(vm)
+        vm.emit([Op.SFSSS, this.func])
+    }
+
 }
 
 class FofSSSN$ extends SFunction {
@@ -378,6 +402,15 @@ class FofSSSN$ extends SFunction {
                                    <NumericExpression>args[3],
                                   ) : null
     }
+
+    public compile(vm: Vm) {
+        this.s1.compile(vm)
+        this.s2.compile(vm)
+        this.s3.compile(vm)
+        this.n4.compile(vm)
+        vm.emit([Op.SFSSN, this.func])
+    }
+
 }
 class FofSN$ extends SFunction {
 
@@ -404,6 +437,12 @@ class FofSN$ extends SFunction {
                                  <StringExpression>args[0],
                                  <NumericExpression>args[1],
                                 ) : null
+    }
+
+    public compile(vm: Vm) {
+        this.s1.compile(vm)
+        this.n2.compile(vm)
+        vm.emit([Op.SFSN, this.func])
     }
 }
 
@@ -437,6 +476,14 @@ class FofSSN$ extends SFunction {
                                    <NumericExpression>args[2],
                                   ) : null
     }
+
+    public compile(vm: Vm) {
+        this.s1.compile(vm)
+        this.s2.compile(vm)
+        this.n3.compile(vm)
+        vm.emit([Op.SFSSN, this.func])
+    }
+
 }
 
 class FofSNN$ extends SFunction {
@@ -468,6 +515,14 @@ class FofSNN$ extends SFunction {
                                    <NumericExpression>args[2],
                                   ) : null
     }
+
+    public compile(vm: Vm) {
+        this.s1.compile(vm)
+        this.n2.compile(vm)
+        this.n3.compile(vm)
+        vm.emit([Op.SFSNN, this.func])
+    }
+
 }
 
 
@@ -498,6 +553,9 @@ class SLiteral extends StringExpression {
         }
     }
 
+    public compile(vm: Vm) {
+        vm.emit([Op.PUSH, this.text.substring(1, this.text.length-1)])
+    }
 }
 
 class SBracket extends StringExpression {
@@ -525,6 +583,10 @@ class SBracket extends StringExpression {
 
         return null
     }
+
+    public compile(vm: Vm) {
+        this.sexpr.compile(vm)
+    }
 }
 
 class SCatOp extends StringExpression {
@@ -540,6 +602,13 @@ class SCatOp extends StringExpression {
     public value(context: Context) : string  {
         return this.left.value(context) + this.right.value(context)
     }
+
+    public compile(vm: Vm) {
+        this.left.compile(vm)
+        this.right.compile(vm)
+        vm.emit1("SC")
+    }
+
 }
 
 
