@@ -67,33 +67,19 @@ class ReadStmt extends Statement {
         return "READ " + channelText + itemsText
     }
 
+    public compile(vm: Vm) {
 
-    public execute(context: Context) : boolean  {
-
-        // Read with a channel reads a binary record from a file, which
-        // isn't working yet
+        // This is really two functions in onw - reading from data and reading
+        // from files and these compile very differently.
         if (this.channel != null) throw new Utility.RunTimeError(ErrorCode.NotImp)
 
         this.items.forEach(item => {
-
-            // Check there's at least one more item to read
-            if (!context.data.more()) throw new Utility.RunTimeError(ErrorCode.ReadBeyond)
-
-            // Take the item from the data stream
-            const datum = context.data.nextDatum()
-
-            // Type checking
-            if (item instanceof NumericItem && datum instanceof NDatum) {
-                item.store(context, datum.value())
-            }
-            else if (item instanceof StringItem && (datum instanceof SDatum)) {
-                // An SDatum or UDatum
-                item.store(context, datum.value())
-            }
-            else {
-                throw new Utility.RunTimeError(ErrorCode.BadInput)
-            }
+            item.compile(vm, true)
         })
+    }
+
+    public execute(context: Context) : boolean  {
+
 
         return true;
     }

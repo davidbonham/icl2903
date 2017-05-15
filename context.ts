@@ -394,6 +394,42 @@ class Data
         return this.next < this.data.length
     }
 
+    public readNumber() : number {
+        if (!this.more()) {
+            throw new Utility.RunTimeError(ErrorCode.ReadBeyond)
+        }
+        else {
+            const datum = this.nextDatum()
+            if (!(datum instanceof NDatum)) {
+                throw new Utility.RunTimeError(ErrorCode.BadInput)
+            }
+            else {
+                const result = parseFloat(datum.value())
+                if (Number.isNaN(result)) {
+                    throw new Utility.RunTimeError(ErrorCode.BadInput)
+                }
+                else {
+                    return result
+                }
+
+            }
+        }
+    }
+    public readString() : string {
+        if (!this.more()) {
+            throw new Utility.RunTimeError(ErrorCode.ReadBeyond)
+        }
+        else {
+            const datum = this.nextDatum()
+            if (!(datum instanceof SDatum)) {
+                throw new Utility.RunTimeError(ErrorCode.BadInput)
+            }
+            else {
+                return datum.value()
+            }
+        }
+    }
+
     public nextDatum() : Datum {
         if (!this.more()) {
             throw new Utility.RunTimeError(ErrorCode.BugCheck)
