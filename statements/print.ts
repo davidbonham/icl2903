@@ -1,7 +1,6 @@
 /// <reference path="../ast.ts" />
 
 abstract class PrintItem {
-    public abstract render(channel: TerminalChannel, context: Context) : void
     public abstract source() : string
     public abstract compile(vm: Vm) : void
 }
@@ -10,10 +9,6 @@ class PrintComma extends PrintItem {
 
     public source() : string {
         return ",";
-    }
-
-    public render(channel: TerminalChannel, context: Context) {
-        channel.comma();
     }
 
     public compile(vm: Vm) {
@@ -26,10 +21,6 @@ class PrintSemi extends PrintItem {
 
     public source() : string {
         return ";";
-    }
-
-    public render(channel: TerminalChannel, context: Context) {
-        // Nothing to render
     }
 
     public compile(vm: Vm) {
@@ -46,13 +37,6 @@ class PrintTab extends PrintItem {
 
     public source() : string {
         return "TAB(" + this.tab.source() + ")";
-    }
-
-    public render(channel: TerminalChannel, context: Context) {
-        // Evaluate the tab setting, rounded down to an integer and
-        // converted to a zero-based offset
-        const column = Math.floor(this.tab.value(context))
-        channel.tab(column - 1);
     }
 
     public compile(vm: Vm) {
@@ -74,10 +58,6 @@ class PrintN extends PrintItem {
         return this.value.source();
     }
 
-    public render(channel: TerminalChannel, context: Context) : void {
-        channel.formatNumber(this.value.value(context));
-    }
-
     public compile(vm: Vm) {
         this.value.compile(vm)
         vm.emit1(Op.TTN)
@@ -88,11 +68,6 @@ class PrintLine extends PrintItem {
 
     public source() : string {
         return ""
-    }
-
-    public render(channel: TerminalChannel, context: Context) : void {
-        channel.wrch("\n")
-        channel.eol()
     }
 
     public compile(vm: Vm) {
@@ -108,10 +83,6 @@ class PrintS extends PrintItem {
 
     public source() : string {
         return this.value.source();
-    }
-
-    public render(channel: TerminalChannel, context: Context) {
-        channel.text(this.value.value(context));
     }
 
     public compile(vm: Vm) {
@@ -248,23 +219,6 @@ class PrintStmt extends Statement {
     }
 
     public execute(context: Context) : boolean {
-        const channel_number = this.channel == null ? 0 : Math.floor(this.channel.value(context) + 0.5)
-
-        const tty = <TerminalChannel>context.owner.channels.get(channel_number);
-
-        tty.begin()
-
-        // Set up the format strings for this print statement, if there are any
-        if (this.using != null) {
-            var format_string = this.using.value(context);
-            tty.setFormat(format_string);
-        }
-
-        for (const item of this.items) {
-            item.render(tty, context);
-        }
-
-        tty.end();
         return true;
     }
 
