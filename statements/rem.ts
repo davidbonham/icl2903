@@ -33,5 +33,9 @@ class RemStmt extends Statement {
 
         return null
     }
+
+    public compile(vm: Vm) {
+        // No effect
+    }
 }
 
