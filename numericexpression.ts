@@ -163,6 +163,7 @@ class Negate extends NumericExpression {
     }
 
     public compile(vm: Vm) {
+        this.nexpr.compile(vm)
         vm.emit([Op.NEG])
     }
 }
