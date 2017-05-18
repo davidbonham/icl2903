@@ -34,4 +34,8 @@ class RestoreStmt extends Statement {
     public renumber(lineMap: number[]) : void {
         if (this.lineNumber in lineMap) this.lineNumber = lineMap[this.lineNumber]
     }
+
+    public compile(vm: Vm) {
+        vm.emit([Op.RST, this.lineNumber])
+    }
 }
