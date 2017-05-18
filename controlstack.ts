@@ -12,7 +12,7 @@ class NextFrame extends ControlFrame {
     public constructor(public readonly control: NScalarRef,
                        public readonly to: number,
                        public readonly step: number,
-                       public readonly startStmtIndex: number) {
+                       public readonly pc: number) {
         super()
     }
 }
@@ -85,11 +85,11 @@ class ControlStack {
     }
 
 
-    public doFor(index: NScalarRef, to: number, step: number) : void {
-        this.stack.push(new NextFrame(index, to, step, this.context.nextStmtIndex))
+    public doFor(index: NScalarRef, to: number, step: number, pc: number) : void {
+        this.stack.push(new NextFrame(index, to, step, pc))
     }
 
-    public doNext(index: NScalarRef, context: Context) : void {
+    public doNext(index: NScalarRef, context: Context) : number {
         // Here, we'll pop items off the control stack until we find the matching
         // NEXT. If we find a return frame or run out, it means this NEXT had no
         // matching FOR.
@@ -128,13 +128,14 @@ class ControlStack {
                     if ((top.step < 0.0 && next < top.to) || (top.step > 0.0 && next > top.to))
                     {
                         this.stack.pop()
+                        return null
                     }
                     else
                     {
                         // Update the control variable, branch to the start of the loop
                         // and leave the frame on the stack
                         top.control.set(context, next)
-                        context.nextStmtIndex = top.startStmtIndex
+                        return top.pc
                     }
                 }
                 else {

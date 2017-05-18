@@ -6,6 +6,7 @@ enum Op {
     DROP,       // V            => ,            drop item on top of stack
     END,        //                              stop execution
     EQ,         // V V          => V == V       test equality
+    FOR,        // V V V        =>              push a FOR onto the control stack
     GE,         // V V          => V >= V       test inequality
     GO,         //              =>              jump to line
     GT,         // V V          => V > V        test inequality
@@ -30,11 +31,13 @@ enum Op {
     NFSSN,      // S1 S2 N3     => F(S1, S2),   apply function to 3 args
     NOP,
     NOT,        // L            => !L           logical not
+    NXT,        //                              End matching FOR loop
     OR,         // L L          => L
     POW,        // N1 N2        => N1^N2        power
     PUSH,
     RDN,        //              => N            read datum ito variable
     RDS,        //              => S            read datum ito variable
+    RST,        //                              restore
     SN,         //              => N            value of numeric scalar
     SUB,        // N1 N2        => N1-N2        subtract
     SAN,        // N C R S      => N,           Set Array Numeric
@@ -207,6 +210,7 @@ class Vm {
         Vm.opmap[Op.DROP]   = Vm.DROP
         Vm.opmap[Op.END]    = Vm.END
         Vm.opmap[Op.EQ]     = Vm.EQ
+        Vm.opmap[Op.FOR]    = Vm.FOR
         Vm.opmap[Op.GE]     = Vm.GE
         Vm.opmap[Op.GO]     = Vm.GO
         Vm.opmap[Op.GT]     = Vm.GT
@@ -231,11 +235,13 @@ class Vm {
         Vm.opmap[Op.NFSSN]  = Vm.NFSSN
         Vm.opmap[Op.NOP]    = Vm.NOP
         Vm.opmap[Op.NOT]    = Vm.NOT
+        Vm.opmap[Op.NXT]    = Vm.NXT
         Vm.opmap[Op.OR]     = Vm.OR
         Vm.opmap[Op.POW]    = Vm.POW
         Vm.opmap[Op.PUSH]   = Vm.PUSH
         Vm.opmap[Op.RDN]    = Vm.RDN
         Vm.opmap[Op.RDS]    = Vm.RDS
+        Vm.opmap[Op.RST]    = Vm.RST
         Vm.opmap[Op.SAN]    = Vm.SAN
         Vm.opmap[Op.SF]     = Vm.SF
         Vm.opmap[Op.SFN]    = Vm.SFN
@@ -466,6 +472,47 @@ class Vm {
         vm.logicalOp((lhs, rhs) => lhs == rhs)
     }
 
+    /**
+     * Start a new FOR loop
+     *
+     * The top of the stack contains the from, to and step values. We need
+     * to retrieve them and use them to construct a new FOR record which
+     * we push onto the control stack ready for the matching NEXT statement.
+     *
+     * This operation should be followed by a JMP to the matching NEXT so
+     * that if the loop is already complete, we don't execute it.
+     *
+     * @param vm
+     * @param context
+     */
+    protected static FOR(vm: Vm, context: Context) : void {
+
+        // The limits are on the stack
+        const step = vm.popNumber()
+        const limit = vm.popNumber()
+        const from = vm.popNumber()
+
+        // Get the control variable from the instruction stream and step
+        // over it
+        const index = vm.code[vm.pc++]
+        if (index instanceof NScalarRef) {
+
+            // Set up the control data so that it needs to be stepped to
+            // be ready for the first iteration
+            index.set(context, from - step)
+
+            // Record the active loop on the control stack ready for the
+            // NXT operator we're about to branch to. The PC is currently
+            // positioned at the JMP so the start of the loop proper is
+            // at PC+2. Record this as the NXT operation will need it.
+            context.controlstack.doFor(index, limit, step, vm.pc+2)
+        }
+        else {
+            // The parser should not have permitted this
+            throw new Utility.RunTimeError(ErrorCode.BugCheck)
+        }
+    }
+
     protected static GE(vm: Vm, context: Context) : void {
         vm.logicalOp((lhs, rhs) => lhs >= rhs)
     }
@@ -638,6 +685,38 @@ class Vm {
         vm.push(!vm.popLogical())
     }
 
+    /**
+     * Perform NEXT
+     *
+     * Unwind the control stack, discarding FOR frames that don't match
+     * not GOSUB or UDFs - we insist a loop be matched with a subroutine
+     * but we allow jumping out of a nested loop to the outer one to end
+     * the inner one early.
+     *
+     * When we have the matching frame, update the index and decide if we
+     * need to branch back to the top to do it again. The PC for the first
+     * statement in the FOR loop is in the frame.
+     *
+     * @param vm
+     * @param context
+     */
+    protected static NXT(vm: Vm, context: Context) : void {
+
+        // The control variable
+        const index = vm.code[vm.pc++]
+        if (index instanceof NScalarRef) {
+            const pc = context.controlstack.doNext(index, context)
+            if (pc) {
+                // Continue the loop by branching to the first instruction
+                vm.pc = pc
+            }
+        }
+        else {
+            // Parser won't allow this
+            throw new Utility.RunTimeError(ErrorCode.BugCheck)
+        }
+    }
+
     protected static POW(vm: Vm, context: Context) : void {
         vm.binaryOpNN(Math.pow)
     }
@@ -647,8 +726,11 @@ class Vm {
     }
 
     protected static RDS(vm: Vm, context: Context) : void {
-
         vm.push(context.data.readString())
+    }
+
+    protected static RST(vm: Vm, context: Context) : void {
+        context.data.restore(vm.argN())
     }
 
     protected static SAN(vm: Vm, context: Context) : void {
@@ -817,5 +899,48 @@ class Vm {
                 this.bug("undefined operation " + op + " at pc " + (this.pc-1))
             }
         }
+    }
+
+    protected prepareFOR(forPc: number, program: Program) : number {
+        const index = this.code[forPc+1]
+        const jmpPc = forPc + 2
+        if (index instanceof NScalarRef) {
+            for(let nxtPc = jmpPc+2; nxtPc < this.code.length-1; ++nxtPc) {
+                if (this.code[nxtPc] == Op.NXT) {
+                    const nxtIndex = this.code[nxtPc+1]
+                    if (nxtIndex instanceof NScalarRef && nxtIndex.same(index)) {
+                        // This is the matching NXT
+                        this.patch(jmpPc, [Op.JMP, nxtPc])
+                        return nxtPc
+                    }
+                }
+            }
+        }
+
+        // We didn't find a match
+        const line = program.lineForPc(forPc)
+        throw new Utility.RunTimeError(ErrorCode.ForUnmatched, line)
+    }
+
+    public prepare(program: Program) {
+
+        // We'll keep track of all the NEXT statements that we manage to
+        // match up with a for
+        let matchedNXT : number[] = []
+
+        this.code.forEach((op, pc) =>{
+            if (op == Op.FOR) {
+                matchedNXT[this.prepareFOR(pc, program)] = 1
+            }
+        })
+
+        // Make sure every NXT was matched
+        this.code.forEach((op, pc) =>{
+            if (op == Op.NXT && !(pc in matchedNXT)) {
+                const line = program.lineForPc(pc)
+                throw new Utility.RunTimeError(ErrorCode.NoFor, line)
+            }
+        })
+
     }
 }

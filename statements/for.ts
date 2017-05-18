@@ -23,8 +23,9 @@ class ForStmt extends Statement {
         // the first iteration
         this.index.set(context, fromValue - stepValue)
 
-        // Put the control data where the NEXT statement will find it
-        context.controlstack.doFor(this.index, toValue, stepValue)
+        // Put the control data where the NEXT statement will find it. The
+        // PC is currently positioned at the JMP so the start of the loop
+        context.controlstack.doFor(this.index, toValue, stepValue, 0)
 
         // Search forward for the next NEXT statement (which must have the same loop
         // control variable) and branch to it.
@@ -73,5 +74,27 @@ class ForStmt extends Statement {
         }
 
         return null
+    }
+
+    public compile(vm: Vm) {
+
+        // Stack the start and finish
+        this.from.compile(vm)
+        this.to.compile(vm)
+
+        // Stack the step, defaulting to 1
+        if (this.step) {
+            this.step.compile(vm)
+        }
+        else {
+            vm.emit([Op.PUSH, 1])
+        }
+
+        // Specify the loop control variable in the FOR
+        vm.emit([Op.FOR, this.index])
+
+        // Space for an unconditional branch to the matching next which
+        // will be patched when we prepare to execute
+        vm.emit([Op.NOP, Op.NOP])
     }
 }

@@ -37,4 +37,8 @@ class NextStmt extends Statement {
             return null
         }
     }
+
+    public compile(vm: Vm) {
+        vm.emit([Op.NXT, this.index])
+    }
 }

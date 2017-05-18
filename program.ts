@@ -453,14 +453,13 @@ class Program {
         throw new Utility.RunTimeError(ErrorCode.DefNoFnend)
     }
 
-    public vmLine() : number {
-        const wantedPC = this.vm.getPC() - 1
+    public lineForPc(wanted: number) : number {
         let previousLine : number
 
         // The indices are line numbers so this is almost always a very
         // sparse array, typically 9 our of 10 indices unused, hence forEach
         this.vmmap.forEach((pc, line) => {
-            if (pc > wantedPC) {
+            if (pc > wanted) {
                 // This line starts after the wanted PC so the previous
                 // line is the one we want.
                 return previousLine
@@ -471,6 +470,11 @@ class Program {
         // Here, we didn't find a line with a PC later than the wanted one
         // so we must want the last line in the program
         return previousLine
+    }
+
+    public vmLine() : number {
+        const wantedPC = this.vm.getPC() - 1
+        return this.lineForPc(wantedPC)
     }
 
     public pcForLine(line: number) {
@@ -545,7 +549,7 @@ class Program {
         }
         catch (e) {
             if (e instanceof Error) throw e
-               this.session.println("LINE " + e.line + " " + e.error);
+            this.session.println("LINE " + e.line + " " + e.error);
         }
     }
 
@@ -622,6 +626,9 @@ class Program {
             statement.compile(this.vm)
             wto("vm " + this.vmmap[index] + ": " + index + " " + statement.source())
         })
+
+        // Resolve any unknown locations in the object code
+        this.vm.prepare(this)
         this.vm.dump()
     }
 }
