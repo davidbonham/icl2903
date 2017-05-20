@@ -240,13 +240,6 @@ class BasicParser
 
         let scanner = new Scanner(line);
 
-        //int lineNo;
-
-        // Assume all will go well. Preserve any current error for the ?
-        // command
-        //ErrorCode.lastError = ErrorCode.get();
-        //ErrorCode.set(ErrorCode.NoError);
-
         const lineNo = scanner.consumeLinenumber()
         if (lineNo != undefined) {
             // Lines starting with a line number are edits to the program
