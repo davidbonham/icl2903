@@ -236,7 +236,9 @@ class LStringRelation extends LogicalExpression {
     }
 
     public source() : string {
-        return this.lhs.source() + this.op.text + this.rhs.source()
+        // Inline the numeric relations, there seem to be spaces around
+        // the string relation
+        return this.lhs.source() + " " + this.op.text + " " + this.rhs.source()
     }
 
     public value(context: Context) : boolean {
