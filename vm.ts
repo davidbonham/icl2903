@@ -1,4 +1,8 @@
+// To allow us to walk through the object code, the operations are endocde in the
+// bottom eight bits and the number of operands in the top eight so that most
+// operations with no operands are simple
 enum Op {
+    // Zero operands
     ADD,        // N1 N2        => N1+N2        add
     AND,        // L L          => L
     CALL,       // L            =>              gosub to line L
@@ -7,7 +11,6 @@ enum Op {
     EIS,        //                              end immediate statement
     END,        //                              stop execution
     EQ,         // V V          => V == V       test equality
-    FOR,        // V V V        =>              push a FOR onto the control stack
     GE,         // V V          => V >= V       test inequality
     GO,         // L            =>              jump to line L
     GT,         // V V          => V > V        test inequality
@@ -16,8 +19,6 @@ enum Op {
     INN,        //              => N            input a number
     INR,        //              =>              reset the input buffer
     INS,        //              => S            input s string
-    JMP,        //                              jump unconditionally
-    JF,         // L            =>
     LE,         // V V          => V <= V       test inequality
     LT,         // V V          => V < V        test inequality
     MAX,        // V V          => V            max of two values
@@ -25,52 +26,18 @@ enum Op {
     MUL,        // N1 N2        => N1*N2        multiply
     NEG,        // N            => -N ,         Negate
     NE,         // V V          => V != V       test inequality
-    NF,         //              => F(),         apply function to 0 arg
-    NFN,        // N            => F(N),        apply function to 1 arg
-    NFS,        // S            => F(S),        apply function to 1 arg
-    NFSS,       // S1 S2        => F(S1, S2),   apply function to 2 args
-    NFSSN,      // S1 S2 N3     => F(S1, S2),   apply function to 3 args
     NOP,
     NOT,        // L            => !L           logical not
-    NTH,        // V1..Vn K     => Vk           select nth or -1
-    NXT,        //                              End matching FOR loop
     OR,         // L L          => L
     POW,        // N1 N2        => N1^N2        power
-    PUSH,
     RDN,        //              => N            read datum ito variable
     RDS,        //              => S            read datum ito variable
     RET,        //                              return from gosub
-    RST,        //                              restore
     SC,         // S1 S2        => S            string concatenation
     STOP,       //                              STOP
     SUB,        // N1 N2        => N1-N2        subtract
     SIC,        // N            =>              Set Input Channel
     SOC,        // N            =>              Set Output Channel
-
-    // String Function Calls
-    SF,
-    SFN,
-    SFSN,
-    SFSNN,
-    SFSS,
-    SFSSN,
-    SFSSS,
-
-    // Numeric References
-    SVN,        // N C          => N,           Set Vector Numeric
-    SAN,        // N C R        => N,           Set Array Numeric
-    SSN,        // N            => N            Set Scalar Numeric
-    SN,         //              => N            value of numeric scalar
-    VN,         // C            => N,           value of numeric vector element
-    AN,         // C R          => N,           value of numeric array element
-
-    // String References
-    SSS,        // S            => S            set string scalar
-    SVS,        // S C          => S            set string vector element
-    SAS,        // S C R        => S            set string array element
-    SS,         //              => S            value of string scalar
-    VS,         // C            => S            value of string vector element
-    AS,         // C R          => S            value of string array element
     TTB,        //              =>              Begin tty output
     TTC,        //              =>              Tab to next comma column
     TTE,        //              =>              End tty output
@@ -78,11 +45,44 @@ enum Op {
     TTL,        //              =>              Finish the current line
     TTN,        // N            =>              Format the number and print it
     TTS,        // S            =>              Format the string and print it
-    TTT         // N            =>              Tab to tab position
+    TTT,        // N            =>              Tab to tab position
+
+    // One Operand
+    AN = 0x100, // C R          => N,           value of numeric array element
+    AS,         // C R          => S            value of string array element
+    FOR,        // V V V        =>              push a FOR onto the control stack
+    JF,         // L            =>
+    JMP,        //                              jump unconditionally
+    NF,         //              => F(),         apply function to 0 arg
+    NFN,        // N            => F(N),        apply function to 1 arg
+    NFS,        // S            => F(S),        apply function to 1 arg
+    NFSS,       // S1 S2        => F(S1, S2),   apply function to 2 args
+    NFSSN,      // S1 S2 N3     => F(S1, S2),   apply function to 3 args
+    NTH,        // V1..Vn K     => Vk           select nth or -1
+    NXT,        //                              End matching FOR loop
+    PUSH,
+    RST,        //                              restore
+    SF,
+    SFN,
+    SFSN,
+    SFSNN,
+    SFSS,
+    SFSSN,
+    SFSSS,
+    SVN,        // N C          => N,           Set Vector Numeric
+    SAN,        // N C R        => N,           Set Array Numeric
+    SSN,        // N            => N            Set Scalar Numeric
+    SN,         //              => N            value of numeric scalar
+    VN,         // C            => N,           value of numeric vector element
+    SSS,        // S            => S            set string scalar
+    SVS,        // S C          => S            set string vector element
+    SAS,        // S C R        => S            set string array element
+    SS,         //              => S            value of string scalar
+    VS,         // C            => S            value of string vector element
 }
 
 type Value = number | string | boolean
-type Code = Op | Value | Object
+type Code = any
 
 
 class InputBuffer {
@@ -302,10 +302,47 @@ class Vm {
 
     public dump() {
         wto("== Object Code ==================")
+        let args = 0
+        let line = ""
         this.code.forEach((value, index) => {
-            const text = typeof(value) == "number" ? Op[value] : "value"
-            wto(Utility.padInteger(index, 5, "0") + ": " + value + "(" + text + ")")
+            if (args == 0) {
+                if (typeof(value) == "number") {
+                    // Back at the start of an operation. Display the last line
+                    wto(line)
+                    line = ""
+                    args = value >> 8
+                    const text = typeof(value) == "number" ? Op[value] : "value"
+                    line = Utility.padInteger(index, 5, "0") + ": " + text + " "
+                }
+                else {
+                    wto(line)
+                    wto("expected operation at pc=" + index + " but " + value + " found")
+                    return
+                }
+            }
+            else {
+                // This is an operand to the last operation
+                if (typeof(value) == "string") {
+                    line += "\"" + value + "\" "
+                }
+                else if (typeof(value) == "number") {
+                    line += value.toString() + " "
+                }
+                else if (typeof(value) == "function") {
+                    line += value.name
+                }
+                else if (value instanceof NScalarRef) {
+                    line += value.source() + " "
+                }
+                else {
+                    line += value.toString() + " [" + typeof(value) + "] "
+                }
+                args--
+            }
         })
+
+        // Display the final operaton
+        wto(line)
         wto("PC=" + this.pc)
         wto("== Value Stack ==================")
         this.valueStack.forEach(value => {
