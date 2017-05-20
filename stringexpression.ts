@@ -105,20 +105,21 @@ abstract class SFunction extends StringExpression
     }
 
     protected static SEG1(s: string, n1: number) : string {
-        if (n1 < 1 || 9999 < n1) throw new Utility.RunTimeError(ErrorCode.InvArg)
-        if (n1 > s.length) return ""
-        return s.substring(n1-1)
+        return SFunction.SEG2(s, n1, s.length)
     }
 
     protected static SEG2(s: string, n1: number, n2: number) : string {
-        if (n1 < 1 || 9999 < n1) throw new Utility.RunTimeError(ErrorCode.InvArg);
-        if (n2 < 1 || 9999 < n2) throw new Utility.RunTimeError(ErrorCode.InvArg);
-        if (n2 < n1) return "";
+        // From the bahaviour of my INFIX progam, it looks as though
+        // an illegal range returns an empty string. So work out the
+        // limits in 1-based positions, clipping to the limits of the
+        // string.
+        const start = n1 < 1 ? 1 : n1
+        const end   = n2 <= s.length ? n2 : s.length
 
-        if (n1 > s.length || n2 < n1) return "";
-        if (n2 > s.length) n2 = s.length;
-
-        return s.substring(n1-1, n2 - n1 + 1)
+        // If the result is that the end precedes the start, an empty string
+        // Note that the substring ends at the character before that specified
+        // so we don't subtract 1 from end when 0-basing it.
+        return end < start ? "" : s.substring(start-1, end)
     }
 
     protected static SGN(n: number) : string {
@@ -146,14 +147,22 @@ abstract class SFunction extends StringExpression
 
 
     protected static SUB1(s1: string, n: number) : string {
-        if (n < 0 || s1.length - 1 < n) throw new Utility.RunTimeError(ErrorCode.InvArg)
-        return s1[n-1]
+        return SFunction.SUB2(s1, n, 1)
     }
 
     protected static SUB2(s1: string, n1: number, n2: number) : string {
-        if (n1 < 0 || s1.length - 1 < n1) throw new Utility.RunTimeError(ErrorCode.InvArg)
-        if (n2 < 0 || s1.length - 1 < n2) throw new Utility.RunTimeError(ErrorCode.InvArg)
-        return s1.substring(n1 - 1, n2)
+        // From the bahaviour of my INFIX progam, it looks as though
+        // an illegal range returns an empty string. So work out the
+        // limits in 1-based positions, clipping to the limits of the
+        // string.
+        const start = n1 < 1 ? 1 : n1
+        const last = n1 + n2 - 1
+        const end = last > s1.length ? s1.length : last
+
+        // If the result is that the end precedes the start, an empty string
+        // Note that the substring ends at the character before that specified
+        // so we don't subtract 1 from end when 0-basing it.
+        return end < start ? "" : s1.substring(start-1, end)
     }
 
     protected static STR(n: number) : string {
@@ -606,7 +615,7 @@ class SCatOp extends StringExpression {
     public compile(vm: Vm) {
         this.left.compile(vm)
         this.right.compile(vm)
-        vm.emit1("SC")
+        vm.emit1(Op.SC)
     }
 
 }
@@ -688,6 +697,10 @@ class SScalarRef extends SRef {
         // The value to be assigned is on the top of the stack so all we
         // need to do is set the variable
         vm.emit([Op.SSS, this.name])
+    }
+
+    public compile(vm: Vm) {
+        vm.emit([Op.SS, this.name])
     }
 
     public static SSS(context: Context, id: string, value: string) {

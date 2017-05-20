@@ -189,8 +189,7 @@ class SLetStmt extends LetStmt {
         // For each left value, generate code to assign the top of the
         // stack to the reference. Drop the value at the end.
         for (const sref of this.lvs) {
-            //sref.compileAssign(vm)
-            Utility.bugcheck("unimplemented")
+            sref.compileAssign(vm)
         }
         vm.emit1(Op.DROP)
 

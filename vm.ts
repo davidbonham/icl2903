@@ -1,6 +1,5 @@
 enum Op {
     ADD,        // N1 N2        => N1+N2        add
-    AN,         // C R          => N,           value of array vector element
     AND,        // L L          => L
     CALL,       // L            =>              gosub to line L
     DIV,        // N1 N2        => N1/N2        divide
@@ -42,11 +41,13 @@ enum Op {
     RDS,        //              => S            read datum ito variable
     RET,        //                              return from gosub
     RST,        //                              restore
-    SN,         //              => N            value of numeric scalar
+    SC,         // S1 S2        => S            string concatenation
+    STOP,       //                              STOP
     SUB,        // N1 N2        => N1-N2        subtract
-    SAN,        // N C R S      => N,           Set Array Numeric
     SIC,        // N            =>              Set Input Channel
     SOC,        // N            =>              Set Output Channel
+
+    // String Function Calls
     SF,
     SFN,
     SFSN,
@@ -54,8 +55,22 @@ enum Op {
     SFSS,
     SFSSN,
     SFSSS,
-    SSN,        // N S          => N,           Set Scalar Numeric
-    SVN,        // N C S        => N,           Set Vector Numeric
+
+    // Numeric References
+    SVN,        // N C          => N,           Set Vector Numeric
+    SAN,        // N C R        => N,           Set Array Numeric
+    SSN,        // N            => N            Set Scalar Numeric
+    SN,         //              => N            value of numeric scalar
+    VN,         // C            => N,           value of numeric vector element
+    AN,         // C R          => N,           value of numeric array element
+
+    // String References
+    SSS,        // S            => S            set string scalar
+    SVS,        // S C          => S            set string vector element
+    SAS,        // S C R        => S            set string array element
+    SS,         //              => S            value of string scalar
+    VS,         // C            => S            value of string vector element
+    AS,         // C R          => S            value of string array element
     TTB,        //              =>              Begin tty output
     TTC,        //              =>              Tab to next comma column
     TTE,        //              =>              End tty output
@@ -63,11 +78,7 @@ enum Op {
     TTL,        //              =>              Finish the current line
     TTN,        // N            =>              Format the number and print it
     TTS,        // S            =>              Format the string and print it
-    TTT,        // N            =>              Tab to tab position
-    VN,         // C            => N,           value of numeric vector element
-    SSS,
-    SVS,
-    SAS,
+    TTT         // N            =>              Tab to tab position
 }
 
 type Value = number | string | boolean
@@ -210,6 +221,7 @@ class Vm {
         Vm.opmap[Op.ADD]    = Vm.ADD
         Vm.opmap[Op.AN]     = Vm.AN
         Vm.opmap[Op.AND]    = Vm.AND
+        Vm.opmap[Op.AS]     = Vm.AS
         Vm.opmap[Op.CALL]   = Vm.CALL
         Vm.opmap[Op.DIV]    = Vm.DIV
         Vm.opmap[Op.DROP]   = Vm.DROP
@@ -225,15 +237,15 @@ class Vm {
         Vm.opmap[Op.INN]    = Vm.INN
         Vm.opmap[Op.INR]    = Vm.INR
         Vm.opmap[Op.INS]    = Vm.INS
-        Vm.opmap[Op.JMP]    = Vm.JMP
         Vm.opmap[Op.JF]     = Vm.JF
+        Vm.opmap[Op.JMP]    = Vm.JMP
         Vm.opmap[Op.LE]     = Vm.LE
         Vm.opmap[Op.LT]     = Vm.LT
         Vm.opmap[Op.MAX]    = Vm.MAX
         Vm.opmap[Op.MIN]    = Vm.MIN
         Vm.opmap[Op.MUL]    = Vm.MUL
-        Vm.opmap[Op.NEG]    = Vm.NEG
         Vm.opmap[Op.NE]     = Vm.NE
+        Vm.opmap[Op.NEG]    = Vm.NEG
         Vm.opmap[Op.NF]     = Vm.NF
         Vm.opmap[Op.NFN]    = Vm.NFN
         Vm.opmap[Op.NFS]    = Vm.NFS
@@ -251,6 +263,8 @@ class Vm {
         Vm.opmap[Op.RET]    = Vm.RET
         Vm.opmap[Op.RST]    = Vm.RST
         Vm.opmap[Op.SAN]    = Vm.SAN
+        Vm.opmap[Op.SAS]    = Vm.SAS
+        Vm.opmap[Op.SC]     = Vm.SC
         Vm.opmap[Op.SF]     = Vm.SF
         Vm.opmap[Op.SFN]    = Vm.SFN
         Vm.opmap[Op.SFSN]   = Vm.SFSN
@@ -261,9 +275,13 @@ class Vm {
         Vm.opmap[Op.SIC]    = Vm.SIC
         Vm.opmap[Op.SN]     = Vm.SN
         Vm.opmap[Op.SOC]    = Vm.SOC
+        Vm.opmap[Op.SS]     = Vm.SS
         Vm.opmap[Op.SSN]    = Vm.SSN
+        Vm.opmap[Op.SSS]    = Vm.SSS
+        Vm.opmap[Op.STOP]   = Vm.STOP
         Vm.opmap[Op.SUB]    = Vm.SUB
         Vm.opmap[Op.SVN]    = Vm.SVN
+        Vm.opmap[Op.SVS]    = Vm.SVS
         Vm.opmap[Op.TTB]    = Vm.TTB
         Vm.opmap[Op.TTC]    = Vm.TTC
         Vm.opmap[Op.TTE]    = Vm.TTE
@@ -273,9 +291,6 @@ class Vm {
         Vm.opmap[Op.TTS]    = Vm.TTS
         Vm.opmap[Op.TTT]    = Vm.TTT
         Vm.opmap[Op.VN]     = Vm.VN
-        Vm.opmap[Op.SSS]    = Vm.SSS
-        Vm.opmap[Op.SVS]    = Vm.SVS
-        Vm.opmap[Op.SAS]    = Vm.SAS
     }
 
     protected bug(reason: string) {
@@ -466,6 +481,14 @@ class Vm {
     }
     protected static AND(vm: Vm, context: Context) : void {
         vm.logicalOp((lhs: boolean, rhs: boolean) => lhs && rhs)
+    }
+
+    protected static AS(vm: Vm, context: Context) : void {
+        const id = vm.argS()
+        const row = vm.popNumber()
+        const col = vm.popNumber()
+        vm.push(SArrayRef.AS(context, id, col, row))
+
     }
 
     protected static CALL(vm: Vm, context: Context) : void {
@@ -794,6 +817,12 @@ class Vm {
         SArrayRef.SAS(context, id, col, row, value)
     }
 
+    protected static SC(vm: Vm, context: Context) : void {
+        const rhs = vm.popString()
+        const lhs = vm.popString()
+        vm.push(lhs+rhs)
+    }
+
     protected static SF(vm: Vm, context: Context) : void {
         const f : () => string = <() => string>vm.code[vm.pc++]
         const result = f()
@@ -862,12 +891,20 @@ class Vm {
         PrintStmt.SOC(context, vm.popNumber())
     }
 
+    protected static SS(vm: Vm, context: Context) : void {
+        vm.push(SScalarRef.SS(context, vm.argS()))
+    }
+
     protected static SSN(vm: Vm, context: Context) : void {
         NScalarRef.SSN(context, vm.argS(), vm.peekNumber())
     }
 
     protected static SSS(vm: Vm, context: Context) : void {
         SScalarRef.SSS(context, vm.argS(), vm.peekString())
+    }
+
+    protected static STOP(vm: Vm, context: Context) : void {
+        throw new Utility.RunTimeError("STOP");
     }
 
     protected static SVS(vm: Vm, context: Context) : void {

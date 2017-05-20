@@ -337,11 +337,18 @@ namespace Session {
 
                 const statement : Statement = node;
 
+                // We need to execute the immediate statement in the context
+                // of the current program. We do this by placing it in a
+                // statement of its own and resuming execution of the program
+                // from there.
+                this.commandContext.owner.setImmediateStatement(statement)
+
                 // Immediate statements may raise exceptions. Execute
                 // them in our interactive context. If they produce
                 // output but don't end the line (eg 'PRINT 3;') we
                 // clean up ourselves
                 try {
+                    let vm =
                     statement.execute(this.commandContext)
                     this.commandContext.owner.channels.closeChannels()
                 }

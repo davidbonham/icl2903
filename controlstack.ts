@@ -3,7 +3,7 @@ abstract class ControlFrame {
 }
 
 class ReturnFrame extends ControlFrame {
-    public constructor(public readonly returnToStmtIndex: number) {
+    public constructor(public readonly pc: number) {
         super()
     }
 }
@@ -13,6 +13,12 @@ class NextFrame extends ControlFrame {
                        public readonly to: number,
                        public readonly step: number,
                        public readonly pc: number) {
+        super()
+    }
+}
+
+class ImmediateFrame extends ControlFrame {
+    public constructor(public readonly pc: number) {
         super()
     }
 }
@@ -48,11 +54,28 @@ class ControlStack {
         this.stack.push(new UDFFrame(this.context.nextStmtIndex, args))
     }
 
-    public doGosub() : void  {
-        this.stack.push(new ReturnFrame(this.context.nextStmtIndex));
+    public doGosub(pc: number) : void  {
+        this.stack.push(new ReturnFrame(pc));
     }
 
-    public doReturn() : void {
+    public doImmediate(pc: number) : void  {
+        this.stack.push(new ReturnFrame(pc));
+    }
+
+    public doEndImmediate() {
+        // We have reached the end of an immediate statement. Unwind any
+        // incomplete frames and the immediate frame itself
+        let top: ControlFrame = null
+        while (this.stack.length > 0) {
+            top = this.stack.pop()
+            if (top instanceof ImmediateFrame) {
+                Utility.bugcheck("need to fake return from gosub to restore state")
+            }
+        }
+
+    }
+
+    public doReturn() : number {
         // It isn't clear from the documentation how RETURN interacts with FOR
         // loops. Consider
         //
@@ -64,11 +87,11 @@ class ControlStack {
         //
         // I assume that RETURN pops NEXT elements off the control stack until we
         // find a RETURN element (or run out)
-        this.context.nextStmtIndex = 0;
-        while (this.context.nextStmtIndex == 0) {
+        let pc = 0
+        while (pc == 0) {
             const frame = this.stack.pop()
             if (frame instanceof ReturnFrame) {
-                this.context.nextStmtIndex = frame.returnToStmtIndex
+                pc = frame.pc
             }
             else if (frame instanceof NextFrame) {
                 // Drop FOR loops in subroutine
@@ -82,6 +105,8 @@ class ControlStack {
                 throw new Utility.RunTimeError(ErrorCode.NoReturn);
             }
         }
+
+        return pc
     }
 
 

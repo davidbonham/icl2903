@@ -593,6 +593,20 @@ class Program {
         return result;
     }
 
+    public setImmediateStatement(statement: Statement) {
+
+        // Note the current end of the object code so it can be restored
+        // at the end
+        const end = this.vm.mark(0)
+
+        // Compile the immediate statement onto the end of the object code
+        // and terminate it with an EIS (end immediate statement)
+        statement.compile(this.vm)
+        this.vm.emit([Op.EIS, end])
+
+        // Now call it as if it were a subroutine
+        this.vm.goto(end)
+    }
     public setInputHandler(handler: (line: string) => boolean) {
         this.inputHandler = handler
         this._oldState = this._state

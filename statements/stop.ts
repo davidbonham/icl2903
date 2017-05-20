@@ -28,4 +28,8 @@ class StopStmt extends Statement
         }
 
     }
+
+    public compile(vm: Vm) {
+        vm.emit1(Op.STOP)
+    }
 }
