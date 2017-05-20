@@ -15,4 +15,8 @@ class ReturnStmt extends Statement {
         context.controlstack.doReturn()
         return false
     }
+
+    public compile(vm: Vm) {
+        vm.emit1(Op.RET)
+    }
 }

@@ -146,14 +146,29 @@ class GotoStmt extends GoSimple {
         context.nextStmtIndex = this.lineNumber*100
         return false;
     }
+
+    public compile(vm: Vm) {
+        // Put the destination line number on the stack
+        vm.emit([Op.PUSH, this.lineNumber])
+        // Branch to its pc
+        vm.emit1(Op.GO)
+    }
 }
 
 class GosubStmt extends GoSimple {
     public execute(context: Context) : boolean {
-        context.controlstack.doGosub();
+        context.controlstack.doGosub(0);
         context.nextStmtIndex = this.lineNumber*100
         return false;
     }
+
+    public compile(vm: Vm) {
+        // Put the destination line number on the stack
+        vm.emit([Op.PUSH, this.lineNumber])
+        // Branch to its pc
+        vm.emit1(Op.CALL)
+    }
+
 }
 
 abstract class GoLines extends GoBase {
@@ -187,7 +202,15 @@ abstract class GoLines extends GoBase {
         return -1
     }
 
-
+    protected compileSelection(vm: Vm) {
+        // Stack all of the destination lines
+        this.lines.forEach(line => vm.emit([Op.PUSH, line]))
+        // Stack the index to be selected
+        this.numexp.compile(vm)
+        // Pop all the lines except for the selected one or -1 if none
+        // is selected
+        vm.emit([Op.NTH, this.lines.length])
+    }
 }
 
 class GotoOfStmt extends GoLines {
@@ -199,6 +222,11 @@ class GotoOfStmt extends GoLines {
         context.nextStmtIndex = line * 100
         return false;
     }
+
+    public compile(vm: Vm) {
+        this.compileSelection(vm)
+        vm.emit1(Op.GO)
+    }
 }
 
 
@@ -209,9 +237,15 @@ class GosubOfStmt extends GoLines {
         const line = this.destination(context)
         if (line < 0) return true
 
-        context.controlstack.doGosub()
+        context.controlstack.doGosub(0)
         context.nextStmtIndex = line * 100
         return false
     }
+
+    public compile(vm: Vm) {
+        this.compileSelection(vm)
+        vm.emit1(Op.CALL)
+    }
+
 }
 

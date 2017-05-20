@@ -19,6 +19,7 @@ class Then extends Statement {
     }
 
     public compile(vm: Vm) {
-        vm.emit([Op.GO, this.line])
+        vm.emit([Op.PUSH, this.line])
+        vm.emit1(Op.GO)
     }
 }

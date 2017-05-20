@@ -2,13 +2,15 @@ enum Op {
     ADD,        // N1 N2        => N1+N2        add
     AN,         // C R          => N,           value of array vector element
     AND,        // L L          => L
+    CALL,       // L            =>              gosub to line L
     DIV,        // N1 N2        => N1/N2        divide
     DROP,       // V            => ,            drop item on top of stack
+    EIS,        //                              end immediate statement
     END,        //                              stop execution
     EQ,         // V V          => V == V       test equality
     FOR,        // V V V        =>              push a FOR onto the control stack
     GE,         // V V          => V >= V       test inequality
-    GO,         //              =>              jump to line
+    GO,         // L            =>              jump to line L
     GT,         // V V          => V > V        test inequality
     IMP,        // L L          => L
     INE,        //                              end the current input statement
@@ -31,12 +33,14 @@ enum Op {
     NFSSN,      // S1 S2 N3     => F(S1, S2),   apply function to 3 args
     NOP,
     NOT,        // L            => !L           logical not
+    NTH,        // V1..Vn K     => Vk           select nth or -1
     NXT,        //                              End matching FOR loop
     OR,         // L L          => L
     POW,        // N1 N2        => N1^N2        power
     PUSH,
     RDN,        //              => N            read datum ito variable
     RDS,        //              => S            read datum ito variable
+    RET,        //                              return from gosub
     RST,        //                              restore
     SN,         //              => N            value of numeric scalar
     SUB,        // N1 N2        => N1-N2        subtract
@@ -206,8 +210,10 @@ class Vm {
         Vm.opmap[Op.ADD]    = Vm.ADD
         Vm.opmap[Op.AN]     = Vm.AN
         Vm.opmap[Op.AND]    = Vm.AND
+        Vm.opmap[Op.CALL]   = Vm.CALL
         Vm.opmap[Op.DIV]    = Vm.DIV
         Vm.opmap[Op.DROP]   = Vm.DROP
+        Vm.opmap[Op.EIS]    = Vm.EIS
         Vm.opmap[Op.END]    = Vm.END
         Vm.opmap[Op.EQ]     = Vm.EQ
         Vm.opmap[Op.FOR]    = Vm.FOR
@@ -235,12 +241,14 @@ class Vm {
         Vm.opmap[Op.NFSSN]  = Vm.NFSSN
         Vm.opmap[Op.NOP]    = Vm.NOP
         Vm.opmap[Op.NOT]    = Vm.NOT
+        Vm.opmap[Op.NTH]    = Vm.NTH
         Vm.opmap[Op.NXT]    = Vm.NXT
         Vm.opmap[Op.OR]     = Vm.OR
         Vm.opmap[Op.POW]    = Vm.POW
         Vm.opmap[Op.PUSH]   = Vm.PUSH
         Vm.opmap[Op.RDN]    = Vm.RDN
         Vm.opmap[Op.RDS]    = Vm.RDS
+        Vm.opmap[Op.RET]    = Vm.RET
         Vm.opmap[Op.RST]    = Vm.RST
         Vm.opmap[Op.SAN]    = Vm.SAN
         Vm.opmap[Op.SF]     = Vm.SF
@@ -441,7 +449,7 @@ class Vm {
 
     public pcForLine(context: Context, line: number) {
         const pc = context.owner.pcForLine(line)
-        if (!pc)throw new Utility.RunTimeError(ErrorCode.CalledLineNot)
+        if (pc == null) throw new Utility.RunTimeError(ErrorCode.CalledLineNot)
         return pc
     }
 
@@ -458,6 +466,15 @@ class Vm {
     }
     protected static AND(vm: Vm, context: Context) : void {
         vm.logicalOp((lhs: boolean, rhs: boolean) => lhs && rhs)
+    }
+
+    protected static CALL(vm: Vm, context: Context) : void {
+        const line = vm.popNumber()
+        if (line != -1) {
+            // Stack a subroutine call, recording the return address
+            context.controlstack.doGosub(vm.pc)
+            vm.pc = vm.pcForLine(context, line)
+        }
     }
 
     protected static DIV(vm: Vm, context: Context) : void {
@@ -518,7 +535,10 @@ class Vm {
     }
 
     protected static GO(vm: Vm, context: Context) : void {
-        vm.pc = vm.pcForLine(context, vm.argN())
+        const line = vm.popNumber()
+        if (line != -1) {
+            vm.pc = vm.pcForLine(context, line)
+        }
     }
 
     protected static GT(vm: Vm, context: Context) : void {
@@ -543,6 +563,10 @@ class Vm {
 
     protected static PUSH(vm: Vm, context: Context) : void {
         vm.push(vm.code[vm.pc++])
+    }
+
+    protected static EIS(vm: Vm, context: Context) : void {
+        Utility.bugcheck("implement")
     }
 
     protected static END(vm: Vm, context: Context) : void {
@@ -681,8 +705,25 @@ class Vm {
     protected static NOP(vm: Vm, context: Context) : void {
         vm.bug("NOP encounted => incomplete patch")
     }
+
     protected static NOT(vm: Vm, context: Context) : void {
         vm.push(!vm.popLogical())
+    }
+
+    protected static NTH(vm: Vm, context: Context) : void {
+
+        // Get the selector
+        const k = Utility.round(vm.popNumber())
+
+        // Get the number of lines stacked
+        const n = vm.argN()
+
+        // Remove n items from the top of the stack and return them
+        const lines = vm.valueStack.splice(-n)
+
+        // If the selector is in range, push that line onto the stack else
+        // push -1 (telling GO/CALL not to take any action)
+        vm.push (1 <= k && k <= n ? lines[k-1] : -1)
     }
 
     /**
@@ -727,6 +768,10 @@ class Vm {
 
     protected static RDS(vm: Vm, context: Context) : void {
         vm.push(context.data.readString())
+    }
+
+    protected static RET(vm: Vm, context: Context) : void {
+        vm.pc = context.controlstack.doReturn()
     }
 
     protected static RST(vm: Vm, context: Context) : void {
