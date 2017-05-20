@@ -28,4 +28,9 @@ class RandomiseStmt extends Statement
             return null
         }
     }
+
+    public compile(vm: Vm) {
+        // There is no way to set the seed of the javascript random number
+        // generator.
+    }
 }
