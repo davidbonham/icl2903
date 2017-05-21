@@ -166,16 +166,11 @@ class Program {
         // can be continued
         this.continuable = false;
 
-        // We have been given line numbers so convert these to the largest
-        // range of indices
-        const low = from
-        const high = to - 1
-
         // Keep lines not in that range
         let result : Statement[] = []
         this.contents.forEach(
             (statement, index) => {
-                if (index < low || high < index) {
+                if (index < from || to < index) {
                     result[index] = statement
                 }
             }
