@@ -20,6 +20,7 @@ enum Op {
     INR,        //              =>              reset the input buffer
     INS,        //              => S            input s string
     LE,         // V V          => V <= V       test inequality
+    LIR,        //                              reset input buffer for LINPUT
     LT,         // V V          => V < V        test inequality
     MAX,        // V V          => V            max of two values
     MIN,        // V V          => V            min of two values
@@ -167,24 +168,16 @@ class InputBuffer {
             return null
         }
         this.itemsRead++
-        return this.tokens.shift()
-
-    }
-
-    public readLine(context: Context) : string {
-
-        // We're doing a LINPUT not an INPUT.
-        if (this.tokens.length == 0) {
-            this.prompt(context)
-            return null
-        }
-        return this.tokens.shift()
+        const item = this.tokens.shift()
+        wto("readString item='" + item + "' length=" + item.length)
+        return item
     }
 
     public prime(line: string) : void {
         wto("prime " + line)
         this.buffer = line
         this.tokens = this.tokenise ? this.tokeniseLine() : [line]
+        wto("primed with line='" + line + "' length=" + line.length)
     }
 
     public flush() : boolean {
@@ -240,6 +233,7 @@ class Vm {
         Vm.opmap[Op.JF]     = Vm.JF
         Vm.opmap[Op.JMP]    = Vm.JMP
         Vm.opmap[Op.LE]     = Vm.LE
+        Vm.opmap[Op.LIR]    = Vm.LIR
         Vm.opmap[Op.LT]     = Vm.LT
         Vm.opmap[Op.MAX]    = Vm.MAX
         Vm.opmap[Op.MIN]    = Vm.MIN
@@ -663,7 +657,7 @@ class Vm {
 
     protected static INS(vm: Vm, context: Context) : void {
         const value = vm.inputBuffer.readString(context)
-        if (!value) {
+        if (value == null) {
             // We need to interact with the user and try this operation
             // again.
             vm.count = 0
@@ -687,6 +681,10 @@ class Vm {
 
     protected static JMP(vm: Vm, context: Context) : void {
         vm.pc = vm.argN()
+    }
+
+    protected static LIR(vm: Vm, context: Context) : void {
+        vm.inputBuffer.reset(false)
     }
 
     protected static JF(vm: Vm, context: Context) : void {

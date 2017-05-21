@@ -76,49 +76,36 @@ class LinputStmt extends Statement {
 
         // Interactive input from a tty must be handled via the UI callback
         // mechanism
-        return channel instanceof TTYChannel ? this.interactiveInput(context, channel)
-                                             : this.fileInput(context, channel)
+        //return channel instanceof TTYChannel ? this.interactiveInput(context, channel)
+        //                                     : this.fileInput(context, channel)
+        return false
     }
 
-    protected interactiveInput(context: Context, tty: TTYChannel) : boolean {
+    public compile(vm: Vm) {
 
-        // We can;t do interactive input without the cooperation of the
-        // session handler. Establush an input handler in the program and
-        // switch its state to Input. This will cause subsequence session
-        // ticks to pass any input to the handler until it is satisfied
-        context.owner.setInputHandler((line: string) => this.inputHandler(context, tty, line))
-
-        // Position ourselves to the first entry in the list of input items
-        this.nextItemNumber = 0
-
-        // Make sure there's a prompt - we know we are interactive
-        tty.writes("? ")
-        tty.eol()
-        return true
-    }
-
-    protected inputHandler(context: Context, tty: TerminalChannel, line: string) : boolean {
-
-        // The UI has provided us with a line of text. There should be another
-        // variable awaiting its value or we have made a mistake
-        if (this.nextItemNumber >= this.variables.length) {
-            throw new Utility.RunTimeError(ErrorCode.BugCheck)
+        // Emit code to set the input channel and reset it ready for input
+        if (this.channel) {
+            this.channel.compile(vm)
         }
-
-        this.variables[this.nextItemNumber].set$(context, line)
-        this.nextItemNumber++
-
-        // If we still have input items left to process, we need more input
-        const more = this.nextItemNumber < this.variables.length
-        if (more) {
-            tty.writes("? ")
-            tty.eol()
+        else {
+            vm.emit([Op.PUSH, 0])
         }
+        vm.emit1(Op.SIC)
 
-        return more
-    }
+        // For each variable, we need to read a record and then assign it
+        // to the string
 
-    protected fileInput(context: Context, channel: TerminalChannel) : boolean {
-        throw new Utility.RunTimeError(ErrorCode.NotImp)
+        // Reset the input buffer for reading whole lines
+        vm.emit1(Op.LIR)
+
+        // Emit code to read a value for each item and store it
+        this.variables.forEach(sref => {
+            vm.emit1(Op.INS)
+            sref.compileAssign(vm)
+            vm.emit1(Op.DROP)
+        })
+
+        // Deal with any left over items
+        vm.emit1(Op.INE)
     }
 }
