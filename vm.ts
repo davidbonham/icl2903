@@ -117,7 +117,6 @@ class InputBuffer {
 
         // If there is text here, it's the last item on the line
         if (current != "") tokens.push(current);
-        wto("tokenised " + tokens)
         return tokens
     }
 
@@ -126,17 +125,14 @@ class InputBuffer {
         this.itemsRead = 0
         this.tokenise = tokenise
         this.tokens = []
-        wto("reset")
     }
 
     public readNumber(context: Context) : number {
-        wto("readNumber tokens=" + this.tokens)
         // We're doing an INPUT not a LINPUT. If we have no tokens, we
         // return null to indicate the vm should break to allow the session
         // to provide a new line of input
         if (this.tokens.length == 0) {
             this.prompt(context)
-            wto("readNumber returns null")
             return null
         }
 
@@ -153,7 +149,6 @@ class InputBuffer {
         }
 
         this.itemsRead++
-        wto("readNumber read " + this.itemsRead + " value " + value)
         return value
 
     }
@@ -169,24 +164,19 @@ class InputBuffer {
         }
         this.itemsRead++
         const item = this.tokens.shift()
-        wto("readString item='" + item + "' length=" + item.length)
         return item
     }
 
     public prime(line: string) : void {
-        wto("prime " + line)
         this.buffer = line
         this.tokens = this.tokenise ? this.tokeniseLine() : [line]
-        wto("primed with line='" + line + "' length=" + line.length)
     }
 
     public flush() : boolean {
-        wto("flush")
         return this.tokens.length != 0
     }
 
     protected prompt(context: Context) {
-        wto("prompt")
         const tty = context.owner.getInputChannel()
         // Make sure there's a prompt - we know we are interactive
         tty.writes("? ")
