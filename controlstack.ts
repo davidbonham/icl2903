@@ -18,7 +18,7 @@ class NextFrame extends ControlFrame {
 }
 
 class ImmediateFrame extends ControlFrame {
-    public constructor(public readonly pc: number) {
+    public constructor(public readonly start: number, public readonly pc: number, public readonly state: ProgramState) {
         super()
     }
 }
@@ -58,8 +58,8 @@ class ControlStack {
         this.stack.push(new ReturnFrame(pc));
     }
 
-    public doImmediate(pc: number) : void  {
-        this.stack.push(new ReturnFrame(pc));
+    public doImmediate(start: number, oldpc: number, oldstate: ProgramState) : void  {
+        this.stack.push(new ImmediateFrame(start, oldpc, oldstate));
     }
 
     public doEndImmediate() {
@@ -69,7 +69,8 @@ class ControlStack {
         while (this.stack.length > 0) {
             top = this.stack.pop()
             if (top instanceof ImmediateFrame) {
-                Utility.bugcheck("need to fake return from gosub to restore state")
+                // Restore the program state from the frame
+                return [top.start, top.pc, top.state]
             }
         }
 

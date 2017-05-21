@@ -341,7 +341,20 @@ namespace Session {
                 // of the current program. We do this by placing it in a
                 // statement of its own and resuming execution of the program
                 // from there.
-                this.commandContext.owner.setImmediateStatement(statement)
+
+                // Compile the statement on the end of the current program,
+                // noting where it starts
+                const program = this.commandContext.owner
+                const [start, oldpc, state] = program.setImmediateStatement(statement)
+
+                // Push a frame onto the control stack recording the current
+                // state we need to restore
+                this.commandContext.controlstack.doImmediate(start, oldpc, state)
+
+                // Position to start executing the immediate statement and
+                // enter the running state so we can resume stepping through
+                // it.
+                program.runImmediateStatement(start)
 
                 // Immediate statements may raise exceptions. Execute
                 // them in our interactive context. If they produce

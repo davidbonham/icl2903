@@ -79,7 +79,7 @@ class Program {
         )
     }
 
-    public get state()  { return this._state}
+    public get state() : ProgramState { return this._state}
 
     public breakIn(context: Context) : void {
 
@@ -578,9 +578,13 @@ class Program {
             this._state = ProgramState.Interrupted
             result = e.error
 
-            // Now display the error on the session tty. Get the current pc
-            // from the vm and look up the line number
-            this.session.println("LINE " + this.vmLine() + " " + e.error)
+            // The error EIS means we have finished executing an immediate
+            // statement and nothing needs to be displayed
+            if (e.error != "EIS") {
+                // Now display the error on the session tty. Get the current pc
+                // from the vm and look up the line number
+                this.session.println("LINE " + this.vmLine() + " " + e.error)
+            }
         }
 
         // If there was an error, return it (although we have already displayed
@@ -588,7 +592,7 @@ class Program {
         return result;
     }
 
-    public setImmediateStatement(statement: Statement) {
+    public setImmediateStatement(statement: Statement) : [number, number, ProgramState] {
 
         // Note the current end of the object code so it can be restored
         // at the end
@@ -598,9 +602,20 @@ class Program {
         // and terminate it with an EIS (end immediate statement)
         statement.compile(this.vm)
         this.vm.emit([Op.EIS, end])
+        return [end, this.vm.getPC(), this._state]
+    }
 
-        // Now call it as if it were a subroutine
-        this.vm.goto(end)
+    public runImmediateStatement(pc: number) {
+        this.vm.goto(pc)
+        this._state = ProgramState.Running
+    }
+
+    public endImmediateStatement(start: number, oldpc: number, state: ProgramState) {
+        // Delete the immediate object code
+        this.vm.trim(start)
+        // Restore our state
+        this.vm.goto(oldpc)
+        this._state = state
     }
     public setInputHandler(handler: (line: string) => boolean) {
         this.inputHandler = handler

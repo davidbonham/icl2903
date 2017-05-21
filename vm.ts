@@ -371,6 +371,10 @@ class Vm {
         this.code.push(code)
     }
 
+    public trim(past: number) {
+        this.code.splice(past)
+    }
+
     public goto(pc: number) {
         this.pc = pc
     }
@@ -610,11 +614,19 @@ class Vm {
     }
 
     protected static EIS(vm: Vm, context: Context) : void {
-        Utility.bugcheck("implement")
+        // Unwind the control stack to discard partially completed loops
+        // and calls
+        const [start, pc, state] = context.controlstack.doEndImmediate()
+        context.owner.endImmediateStatement(start, pc, state)
+
+        // Force a return to the session
+        vm.count = 0
+        throw new Utility.RunTimeError("EIS")
+
     }
 
     protected static END(vm: Vm, context: Context) : void {
-        EndStmt.exec()
+        throw new Utility.RunTimeError("DONE")
     }
 
     /**
