@@ -76,7 +76,7 @@ class InputStmt extends Statement {
 
     public static SIC(context: Context, channel: number) {
         const channelNumber = Utility.round(channel)
-        context.owner.setInputChannel(<TerminalChannel>context.owner.channels.get(channelNumber))
+        context.root().setInputChannel(<TerminalChannel>context.root().channels.get(channelNumber))
     }
 
     public compile(vm: Vm) {

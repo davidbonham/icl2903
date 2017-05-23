@@ -224,43 +224,43 @@ class PrintStmt extends Statement {
 
     public static SOC(context: Context, channel: number) {
         const channelNumber = Utility.round(channel)
-        context.owner.setOutputChannel(<TerminalChannel>context.owner.channels.get(channelNumber))
+        context.root().setOutputChannel(<TerminalChannel>context.root().channels.get(channelNumber))
     }
 
     public static TTB(context: Context) {
-        context.owner.getOutputChannel().begin()
+        context.root().getOutputChannel().begin()
     }
 
     public static TTC(context: Context) {
-        context.owner.getOutputChannel().comma()
+        context.root().getOutputChannel().comma()
     }
 
     public static TTE(context: Context) {
-        context.owner.getOutputChannel().end()
+        context.root().getOutputChannel().end()
     }
 
     public static TTF(context: Context, format: string) {
-        context.owner.getOutputChannel().setFormat(format)
+        context.root().getOutputChannel().setFormat(format)
     }
 
     public static TTL(context: Context) {
-        context.owner.getOutputChannel().wrch("\n")
-        context.owner.getOutputChannel().eol()
+        context.root().getOutputChannel().wrch("\n")
+        context.root().getOutputChannel().eol()
     }
 
     public static TTN(context: Context, value: number) {
-        context.owner.getOutputChannel().formatNumber(value)
+        context.root().getOutputChannel().formatNumber(value)
     }
 
     public static TTS(context: Context, text: string) {
-        context.owner.getOutputChannel().text(text)
+        context.root().getOutputChannel().text(text)
     }
 
     public static TTT(context: Context, column: number) {
         // Evaluate the tab setting, rounded down to an integer and
         // converted to a zero-based offset
         const rounded = Utility.round(column)
-        context.owner.getOutputChannel().tab(rounded - 1);
+        context.root().getOutputChannel().tab(rounded - 1);
     }
 
     public compile(vm: Vm) {

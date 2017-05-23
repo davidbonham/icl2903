@@ -90,9 +90,12 @@ class ChainStmt extends Statement {
         // We haven't implemented channel handling yet
         if (this.channels.length > 0) throw new Utility.RunTimeError(ErrorCode.NotImp)
 
+        const root = context.root()
+        const program = root.program
+
         // We need to replace the current program with the one held in memory
         const name = this.name.value(context)
-        const loader = new FileLoader(context.owner.session, name)
+        const loader = new FileLoader(program.session, name)
 
         const contents = loader.getRecords()
         if (typeof(contents) == "string") {
@@ -101,19 +104,19 @@ class ChainStmt extends Statement {
         else if (contents.type == 'B') {
 
             // Clear the existing program
-            context.owner.delete(1, Scanner.MAX_LINE)
+            program.delete(1, Scanner.MAX_LINE)
 
             // Load the current program
             loader.loadBasic(contents.contents)
-            context.owner.name = name
-            context.owner.isData = false;
+            program.name = name
+            program.isData = false
 
-            // Clear the existing variables
-            context.owner.session.commandContext.clear()
+            // Clear the existing contexts
+            context.clear()
 
             // If we have a line number, set that as the next one else
             // atart from the beginning
-            context.owner.run(this.line, context.owner.session.commandContext, false)
+            program.run(this.line, context, false)
         }
         else {
             throw new Utility.RunTimeError(ErrorCode.FileWrongType)

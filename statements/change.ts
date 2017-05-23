@@ -42,11 +42,11 @@ class ChangeNtoS extends ChangeStmt {
         let result = "";
 
         // The zeroth array element holds the number of characters it holds
-        const length = Utility.round(context.getVector(this.nid, 0.0))
+        const length = Utility.round(context.state().getVector(this.nid, 0.0))
         for (let i = 1; i <= length; ++i){
 
             // Get the next character code - it's an ICL code so 0..63
-            const element = Utility.round(context.getVector(this.nid, i))
+            const element = Utility.round(context.state().getVector(this.nid, i))
             if (element < 0 || 63 < element) throw new Utility.RunTimeError(ErrorCode.InvArg)
 
             // Convert it into the corresponding character and add it to
@@ -56,7 +56,7 @@ class ChangeNtoS extends ChangeStmt {
         }
 
         // Store the resuld in the string variable
-        context.set$(this.sid, result)
+        context.state().set$(this.sid, result)
 
         return true;
     }
@@ -79,12 +79,12 @@ class ChangeStoN extends ChangeStmt {
         const text = this.sexpr.value(context)
 
         // Set the length into element 0
-        context.setVector(this.nid, 0.0, text.length)
+        context.state().setVector(this.nid, 0.0, text.length)
 
         // Now set each character into the subsequent elements
         for (let i = 0; i < text.length; ++i) {
             const code = Scanner.characterSet.indexOf(text[i])
-            context.setVector(this.nid, i+1, code)
+            context.state().setVector(this.nid, i+1, code)
         }
 
         return true;

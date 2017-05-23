@@ -591,7 +591,7 @@ class UdfN extends NFunction {
     }
 
     public value(context: Context) : number {
-        const definition = context.owner.getUdf(this.name)
+        const definition = context.root().program.getUdf(this.name)
         if (definition instanceof DefExpStmtN || definition instanceof DefBlockStmtN) {
             return definition.call(context, this.args)
         }
@@ -624,7 +624,7 @@ class UdfS extends SFunction {
     }
 
     public value(context: Context) : string {
-        const definition = context.owner.getUdf(this.name)
+        const definition = context.root().program.getUdf(this.name)
         if (definition instanceof DefExpStmtS || definition instanceof DefBlockStmtS) {
             return definition.call(context, this.args)
         }
@@ -825,7 +825,7 @@ class NScalarRef extends NRef {
     }
 
     public value(context: Context) : number {
-        return context.getNumber(this.name)
+        return context.state().getNumber(this.name)
     }
 
     public source() : string {
@@ -833,7 +833,7 @@ class NScalarRef extends NRef {
     }
 
     public set(context: Context, value: number) : void {
-        context.setScalar(this.name, value)
+        context.state().setScalar(this.name, value)
     }
 
     public same(other: NScalarRef) : boolean {
@@ -855,11 +855,11 @@ class NScalarRef extends NRef {
     }
 
     public static SSN(context: Context, id: string, value: number) {
-        context.setScalar(id, value)
+        context.state().setScalar(id, value)
     }
 
     public static SN(context: Context, id: string) : number {
-        return context.getNumber(id)
+        return context.state().getNumber(id)
     }
 }
 
@@ -870,7 +870,7 @@ class NVectorRef extends NRef
     }
 
     public value(context: Context) : number {
-        return context.getVector(this.name, this.col.value(context))
+        return context.state().getVector(this.name, this.col.value(context))
     }
 
     public source() : string {
@@ -878,7 +878,7 @@ class NVectorRef extends NRef
     }
 
     public set(context: Context, value: number) : void {
-        context.setVector(this.name, this.col.value(context), value)
+        context.state().setVector(this.name, this.col.value(context), value)
     }
 
     public hasConstantSubscripts() : boolean {
@@ -886,7 +886,7 @@ class NVectorRef extends NRef
     }
 
     public  prepare(context: Context) : void {
-        context.dimVector(this.name, this.col.value(context))
+        context.state().dimVector(this.name, this.col.value(context))
     }
 
     public compile(vm: Vm) {
@@ -903,11 +903,11 @@ class NVectorRef extends NRef
     }
 
     public static SVN(context: Context, id: string, col: number, value: number) : void {
-        context.setVector(id, col, value)
+        context.state().setVector(id, col, value)
     }
 
     public static VN(context: Context, id: string, col: number) : number {
-        return context.getVector(id, col)
+        return context.state().getVector(id, col)
     }
 
 
@@ -923,15 +923,15 @@ class NArrayRef extends NRef
     }
 
     public value(context: Context) : number {
-        return context.getArray(this.name, this.col.value(context), this.row.value(context))
+        return context.state().getArray(this.name, this.col.value(context), this.row.value(context))
     }
 
     public static AN(context: Context, id: string, col: number, row: number) : number {
-        return context.getArray(id, col, row)
+        return context.state().getArray(id, col, row)
     }
 
     public static SAN(context: Context, id: string, col: number, row: number, value: number) : void {
-        context.setArray(id, col, row, value)
+        context.state().setArray(id, col, row, value)
     }
 
     public source() : string {
@@ -939,7 +939,7 @@ class NArrayRef extends NRef
     }
 
     public set(context: Context, value: number) : void {
-        context.setArray(this.name, this.col.value(context), this.row.value(context), value)
+        context.state().setArray(this.name, this.col.value(context), this.row.value(context), value)
     }
 
     public hasConstantSubscripts() : boolean {
@@ -948,7 +948,7 @@ class NArrayRef extends NRef
 
     public prepare(context: Context) : void
     {
-        context.dimArray(this.name, this.col.value(context), this.row.value(context))
+        context.state().dimArray(this.name, this.col.value(context), this.row.value(context))
     }
 
     public compile(vm: Vm) {

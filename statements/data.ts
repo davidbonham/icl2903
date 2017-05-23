@@ -53,7 +53,7 @@ class DataStmt extends Statement
     }
 
     public prepare(context: Context, line: number) : void {
-        this.data.forEach ((datum) => context.data.add(line, datum))
+        this.data.forEach ((datum) => context.root().data.add(line, datum))
     }
 }
 

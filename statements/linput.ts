@@ -69,7 +69,7 @@ class LinputStmt extends Statement {
         // Work out the channel number and get it out of the program's
         // open channels
         const channelNumber = this.channel == null ? 0 : Utility.round(this.channel.value(context))
-        const channel = context.owner.channels.get(channelNumber)
+        const channel = context.root().channels.get(channelNumber)
 
         // We must be connected to a terminal format file
         if (!(channel instanceof TerminalChannel)) throw new Utility.RunTimeError(ErrorCode.FileWrongType)

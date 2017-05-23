@@ -12,7 +12,6 @@ class ReturnStmt extends Statement {
     }
 
     public execute(context: Context) : boolean {
-        context.controlstack.doReturn()
         return false
     }
 

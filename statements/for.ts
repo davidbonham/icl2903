@@ -12,24 +12,6 @@ class ForStmt extends Statement {
     }
 
     public execute(context: Context) : boolean {
-
-        // Evaluate the loop bounds and set the loop control variable to its initial
-        // value then push the NEXT record onto the context's control stack.
-        const fromValue = this.from.value(context)
-        const toValue = this.to.value(context)
-        const stepValue = this.step == null ? 1.0 : this.step.value(context)
-
-        // Set up the control data so that it needs to be stepped to be ready for
-        // the first iteration
-        this.index.set(context, fromValue - stepValue)
-
-        // Put the control data where the NEXT statement will find it. The
-        // PC is currently positioned at the JMP so the start of the loop
-        context.controlstack.doFor(this.index, toValue, stepValue, 0)
-
-        // Search forward for the next NEXT statement (which must have the same loop
-        // control variable) and branch to it.
-        context.nextStmtIndex = context.owner.findNext(context.stmtIndex, this.index)
         return false;
     }
 

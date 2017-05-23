@@ -142,8 +142,8 @@ class InputBuffer {
         if (Number.isNaN(value)) {
             // This wasn't a number so we discard any remaining input and
             // ask the user to retype the line and get the VM to break
-            const line = context.owner.vmLine()
-            context.owner.session.println("LINE " + line + " BAD INPUT - RETYPE FROM ITEM " + (this.itemsRead + 1) + "\n")
+            const line = context.root().program.vmLine()
+            context.root().session.println("LINE " + line + " BAD INPUT - RETYPE FROM ITEM " + (this.itemsRead + 1) + "\n")
             this.prompt(context)
             return null
         }
@@ -177,7 +177,7 @@ class InputBuffer {
     }
 
     protected prompt(context: Context) {
-        const tty = context.owner.getInputChannel()
+        const tty = context.root().getInputChannel()
         // Make sure there's a prompt - we know we are interactive
         tty.writes("? ")
         tty.eol()
@@ -488,7 +488,7 @@ class Vm {
     }
 
     public pcForLine(context: Context, line: number) {
-        const pc = context.owner.pcForLine(line)
+        const pc = context.root().program.pcForLine(line)
         if (pc == null) throw new Utility.RunTimeError(ErrorCode.CalledLineNot)
         return pc
     }
@@ -520,7 +520,7 @@ class Vm {
         const line = vm.popNumber()
         if (line != -1) {
             // Stack a subroutine call, recording the return address
-            context.controlstack.doGosub(vm.pc)
+            context.pushGosubReturn(vm.pc)
             vm.pc = vm.pcForLine(context, line)
         }
     }
@@ -570,7 +570,7 @@ class Vm {
             // NXT operator we're about to branch to. The PC is currently
             // positioned at the JMP so the start of the loop proper is
             // at PC+2. Record this as the NXT operation will need it.
-            context.controlstack.doFor(index, limit, step, vm.pc+2)
+            context.pushForNext(index, limit, step, vm.pc+2)
         }
         else {
             // The parser should not have permitted this
@@ -616,8 +616,8 @@ class Vm {
     protected static EIS(vm: Vm, context: Context) : void {
         // Unwind the control stack to discard partially completed loops
         // and calls
-        const [start, pc, state] = context.controlstack.doEndImmediate()
-        context.owner.endImmediateStatement(start, pc, state)
+        const [start, pc, state] = context.popImmediate()
+        context.root().program.endImmediateStatement(start, pc, state)
 
         // Force a return to the session
         vm.count = 0
@@ -650,7 +650,7 @@ class Vm {
             // again.
             vm.count = 0
             vm.pc--
-            context.owner.needInput()
+            context.root().program.needInput()
         }
         else {
             vm.push(value)
@@ -664,7 +664,7 @@ class Vm {
             // again.
             vm.count = 0
             vm.pc--
-            context.owner.needInput()
+            context.root().program.needInput()
         }
         else {
             vm.push(value)
@@ -673,7 +673,7 @@ class Vm {
 
     protected static INE(vm: Vm, context: Context) : void {
         if (vm.inputBuffer.flush()) {
-            context.owner.session.println("EXTRA INPUT - WARNING ONLY")
+            context.root().session.println("EXTRA INPUT - WARNING ONLY")
         }
     }
 
@@ -806,7 +806,7 @@ class Vm {
         // The control variable
         const index = vm.code[vm.pc++]
         if (index instanceof NScalarRef) {
-            const pc = context.controlstack.doNext(index, context)
+            const pc = context.popForNext(index)
             if (pc) {
                 // Continue the loop by branching to the first instruction
                 vm.pc = pc
@@ -823,19 +823,19 @@ class Vm {
     }
 
     protected static RDN(vm: Vm, context: Context) : void {
-        vm.push(context.data.readNumber())
+        vm.push(context.root().data.readNumber())
     }
 
     protected static RDS(vm: Vm, context: Context) : void {
-        vm.push(context.data.readString())
+        vm.push(context.root().data.readString())
     }
 
     protected static RET(vm: Vm, context: Context) : void {
-        vm.pc = context.controlstack.doReturn()
+        vm.pc = context.popGosubReturn()
     }
 
     protected static RST(vm: Vm, context: Context) : void {
-        context.data.restore(vm.argN())
+        context.root().data.restore(vm.argN())
     }
 
     protected static SAN(vm: Vm, context: Context) : void {

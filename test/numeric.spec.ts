@@ -2,7 +2,7 @@ function test(text: string) : number | string {
 
     let scanner = new Scanner(text)
     let ast = NumericExpression.parse(scanner)
-    let context : Context = new Context(null, null)
+    let context : Context = new Context()
     try {
         return ast.value(context)
     }

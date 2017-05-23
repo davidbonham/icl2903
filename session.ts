@@ -35,6 +35,7 @@ namespace Session {
                 // starts and will continue until the user logs out with
                 // the BYE command
                 const session = new Session(tty, fs);
+
                 tty.setPendingHandler(loginGenerator (session, tty))
                 return {busy: false};
             }
@@ -228,7 +229,8 @@ namespace Session {
 
         constructor(private terminal : Terminal.Terminal, public readonly fileStore: FileStore) {
             this.program_ = new Program(this)
-            this.commandContext = new Context(null, this.program_)
+            this.commandContext = new Context
+            this.commandContext.pushRoot(this, this.program_)
         };
 
         public println(line: string) : void {
@@ -344,12 +346,12 @@ namespace Session {
 
                 // Compile the statement on the end of the current program,
                 // noting where it starts
-                const program = this.commandContext.owner
+                const program = this.commandContext.root().program
                 const [start, oldpc, state] = program.setImmediateStatement(statement)
 
                 // Push a frame onto the control stack recording the current
                 // state we need to restore
-                this.commandContext.controlstack.doImmediate(start, oldpc, state)
+                this.commandContext.pushImmediate(start, oldpc, state)
 
                 // Position to start executing the immediate statement and
                 // enter the running state so we can resume stepping through
@@ -363,11 +365,11 @@ namespace Session {
                 try {
                     let vm =
                     statement.execute(this.commandContext)
-                    this.commandContext.owner.channels.closeChannels()
+                    this.commandContext.root().channels.closeChannels()
                 }
                 catch (e) {
                     if (e instanceof Utility.RunTimeError) {
-                        this.commandContext.owner.channels.closeChannels()
+                        this.commandContext.root().channels.closeChannels()
                         this.lastError = e.error
                         this.println(this.lastError)
                     }

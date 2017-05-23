@@ -10,7 +10,6 @@ class NextStmt extends Statement {
     }
 
     public execute(context: Context) : boolean {
-        context.controlstack.doNext(this.index, context)
         return false;
     }
 

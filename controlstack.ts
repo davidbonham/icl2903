@@ -23,15 +23,6 @@ class ImmediateFrame extends ControlFrame {
     }
 }
 
-class EndFrame extends ControlFrame {
-}
-
-class UDFFrame extends ControlFrame {
-
-    public constructor(public readonly returnToStmtIndex: number, public readonly args: Expression[]) {
-        super()
-    }
-}
 
 class ControlStack {
 
@@ -39,19 +30,6 @@ class ControlStack {
 
     public constructor(protected readonly context: Context)  {
         this.stack = []
-    }
-
-    public clear() : void {
-        this.stack = []
-        this.stack.push(new EndFrame)
-    }
-
-    public empty() : boolean {
-        return this.stack.length == 0
-    }
-
-    public doUDF(lineno: number, args: Expression[]) : void {
-        this.stack.push(new UDFFrame(this.context.nextStmtIndex, args))
     }
 
     public doGosub(pc: number) : void  {
@@ -97,14 +75,6 @@ class ControlStack {
             else if (frame instanceof NextFrame) {
                 // Drop FOR loops in subroutine
             }
-            else if (frame instanceof UDFFrame) {
-                throw new Utility.RunTimeError(ErrorCode.InvExit);
-            }
-            else {
-                // Must be the stack end marker so there was no return
-                // frame
-                throw new Utility.RunTimeError(ErrorCode.NoReturn);
-            }
         }
 
         return pc
@@ -115,61 +85,5 @@ class ControlStack {
         this.stack.push(new NextFrame(index, to, step, pc))
     }
 
-    public doNext(index: NScalarRef, context: Context) : number {
-        // Here, we'll pop items off the control stack until we find the matching
-        // NEXT. If we find a return frame or run out, it means this NEXT had no
-        // matching FOR.
 
-        const wantedControl = index;
-        let found = false;
-
-        while (!found) {
-
-            // Note: this is a reference to the top stack item
-            const top = this.stack[this.stack.length-1]
-
-            if (top instanceof ReturnFrame) {
-                throw new Utility.RunTimeError(ErrorCode.NoFor)
-            }
-            else if (top instanceof EndFrame) {
-                throw new Utility.RunTimeError(ErrorCode.NoFor)
-            }
-            else if (top instanceof UDFFrame) {
-                throw new Utility.RunTimeError(ErrorCode.NoFor)
-            }
-            else if (top instanceof NextFrame) {
-                //case NextFrame(c, limit, step, line) => {
-                // If this is for a nested loop, ignore it (terminating the loop) else
-                // see if we should continue
-                const control = top.control
-                if (control.same(wantedControl)) {
-
-                    // This is the matching next
-                    found = true
-
-                    // Get the next value of the loop control variable
-                    const next = index.value(context) + top.step
-
-                    // If it has passed the limit, we end the loop
-                    if ((top.step < 0.0 && next < top.to) || (top.step > 0.0 && next > top.to))
-                    {
-                        this.stack.pop()
-                        return null
-                    }
-                    else
-                    {
-                        // Update the control variable, branch to the start of the loop
-                        // and leave the frame on the stack
-                        top.control.set(context, next)
-                        return top.pc
-                    }
-                }
-                else {
-                    // Not the matching FOR loop so we stop running it
-                    // and look for the enclosing one
-                    this.stack.pop()
-                }
-            }
-        }
-    }
 }

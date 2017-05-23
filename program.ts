@@ -31,11 +31,6 @@ class Program {
     // Is this a data file rather than a basic program?
     public isData: boolean
 
-    // The I/O channels as seen by this program. Channel 0 is the tty
-    protected _channels: Channels
-    public get channels() { return this._channels; }
-    protected currentInput: TerminalChannel
-    protected currentOutput: TerminalChannel
 
     // Locations of user defined functions as a map from name to index
     protected udf: { [name: string]: number; }
@@ -60,10 +55,6 @@ class Program {
         this.udf = {}
         this.staleLineMap = true
 
-        this._channels = new Channels
-        this._channels.set(0, new TTYChannel(session))
-        this.currentInput = <TerminalChannel>this._channels.get(0)
-        this.currentOutput = <TerminalChannel>this._channels.get(0)
         this.vm = new Vm()
         this.vm.clear()
         this.vmmap = []
@@ -92,7 +83,7 @@ class Program {
         // Close all of the channels, whatever the reason for breaking.
         // This will ensure we are at the start of the line on all
         // terminal format channels.
-        this._channels.closeChannels()
+        context.root().channels.closeChannels()
 
         // Now display the interrupt on the session tty.
         this.session.println("LINE " + this.vmLine() + " BREAK IN" )
@@ -289,31 +280,9 @@ class Program {
         return this.nextLineMap[index]
     }
 
-    protected closeChannels() : void {
-        // No channel I/O yet
-        this.currentInput = <TerminalChannel>this._channels.get(0)
-        this.currentOutput = <TerminalChannel>this._channels.get(0)
-    }
-
-    public setInputChannel(channel: TerminalChannel) {
-        this.currentInput = channel
-    }
-
-    public setOutputChannel(channel: TerminalChannel) {
-        this.currentOutput = channel
-    }
-
-    public getOutputChannel() : TerminalChannel{
-        return this.currentOutput
-    }
-
-    public getInputChannel() : TerminalChannel{
-        return this.currentInput
-    }
 
     protected clearState(context: Context) : void {
         this.udf = {}
-        this.closeChannels();
         context.clear();
         this.vm.clear()
     }
@@ -574,7 +543,7 @@ class Program {
             // Close all of the channels, whatever the reason for breaking.
             // This will ensure we are at the start of the line on all
             // terminal format channels.
-            this._channels.closeChannels()
+            context.root().channels.closeChannels()
             this._state = ProgramState.Interrupted
             result = e.error
 

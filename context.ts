@@ -2,15 +2,221 @@
 
 class Context {
 
-    // The array index of the next line (not the statement number, which
-    // is stmtIndex / 100)
-    public stmtIndex: number
-
-    // The array index of the next statement to execute
+    // TODO: Remove this when all of the execute methods no longer need it
     public nextStmtIndex: number
 
-    // The data defined by the program for READ
-    public data: Data;
+    protected stack: BaseContext[]
+    protected current: BaseContext
+
+    public constructor() {
+        this.stack = []
+        this.current = null
+    }
+
+    public clear() {
+        wto("context clear")
+        // Return to the very top of the context chain
+        this.current = this.root()
+
+        // Discard all of the variables and channels
+        this.root().clear()
+
+        // Discard all of the other contexts
+        this.stack = []
+    }
+
+    protected pop()  {
+        this.current = this.stack.pop()
+        this.dump("after context pop")
+    }
+
+    public pushRoot(session: Session.Session, program: Program) {
+        this.current = new RootContext(session, program)
+        this.dump("after pushRoot")
+    }
+
+    public pushGosubReturn(pc: number) {
+        this.stack.push(this.current)
+        this.current = new GosubReturnContext(this.current, pc)
+        this.dump("after pushGosubReturn")
+    }
+
+    public pushForNext(index: NScalarRef, limit: number, step: number, top: number) {
+        this.stack.push(this.current)
+        this.current = new ForNextContext(this.current, index, limit, step, top)
+        this.dump("after pushForNext")
+    }
+
+    public pushUDF(pc: number) {
+        this.stack.push(this.current)
+        this.current = new UDFContext(this.current, pc)
+    }
+
+    public pushImmediate(start: number, oldpc: number, programstate: ProgramState) {
+        this.stack.push(this.current)
+        this.current = new ImmediateContext(this.current, start, oldpc, programstate)
+    }
+
+    public popForNext(index: NScalarRef) : number {
+
+        // Here, we'll pop items off the control stack until we find the matching
+        // NEXT. If we find a return frame or run out, it means this NEXT had no
+        // matching FOR.
+
+        const wantedControl = index;
+        let found = false;
+
+        while (!found) {
+
+            // Note: this is a reference to the top stack item
+            const top = this.current
+
+            if (top instanceof GosubReturnContext) {
+                throw new Utility.RunTimeError(ErrorCode.NoFor)
+            }
+            else if (top instanceof EndContext) {
+                throw new Utility.RunTimeError(ErrorCode.NoFor)
+            }
+            else if (top instanceof UDFContext) {
+                throw new Utility.RunTimeError(ErrorCode.NoFor)
+            }
+            else if (top instanceof ImmediateContext) {
+                // If we're passing through an immediate frame, that's OK
+                // it just means the user typed something like GOTO 10 so
+                // we carry on to the end of the program and ignore the
+                // saved state.
+                this.pop()
+            }
+            else if (top instanceof ForNextContext) {
+                //case NextFrame(c, limit, step, line) => {
+                // If this is for a nested loop, ignore it (terminating the loop) else
+                // see if we should continue
+                const control = top.control
+                if (control.same(wantedControl)) {
+
+                    // This is the matching next
+                    found = true
+
+                    // Get the next value of the loop control variable
+                    const next = index.value(this) + top.step
+
+                    // If it has passed the limit, we end the loop
+                    if ((top.step < 0.0 && next < top.to) || (top.step > 0.0 && next > top.to)) {
+                        this.pop()
+                        this.dump("after popForNext matched, end loop")
+                        return null
+                    }
+                    else {
+                        // Update the control variable, branch to the start of the loop
+                        // and leave the frame on the stack
+                        top.control.set(this, next)
+                        return top.pc
+                    }
+                }
+                else {
+                    // Not the matching FOR loop so we stop running it
+                    // and look for the enclosing one
+                    this.pop()
+                    this.dump("after popForNext unmatched")
+                }
+            }
+        }
+    }
+
+    public popGosubReturn() {
+        // It isn't clear from the documentation how RETURN interacts with FOR
+        // loops. Consider
+        //
+        // 100 GOSUB 200
+        // 110 STOP
+        // 200 FOR I=1 TO 10
+        // 210 RETURN
+        // 220 NEXT I
+        //
+        // I assume that RETURN pops NEXT elements off the control stack until we
+        // find a RETURN element (or run out)
+        let pc = 0
+        while (pc == 0) {
+            this.dump("popGosubReturn in loop")
+
+            let frame = this.current
+            if (frame instanceof GosubReturnContext) {
+                pc = frame.pc
+            }
+            else if (frame instanceof ForNextContext) {
+                // Drop FOR loops in subroutine
+            }
+            else if (frame instanceof UDFContext) {
+                throw new Utility.RunTimeError(ErrorCode.InvExit);
+            }
+            else if (top instanceof ImmediateContext) {
+                // If we're passing through an immediate frame, that's OK
+                // it just means the user typed something like GOTO 10 so
+                // we carry on to the end of the program and ignore the
+                // saved state.
+            }
+            else {
+                // Must be the stack end marker so there was no return
+                // frame
+                throw new Utility.RunTimeError(ErrorCode.NoReturn);
+            }
+            this.pop()
+        }
+        this.dump("popGosubReturn exit")
+
+        return pc
+
+    }
+
+    public popImmediate() : [number, number, ProgramState] {
+        // We have reached the end of an immediate statement. Unwind any
+        // incomplete frames and the immediate frame itself
+        for(;;) {
+            const top = this.current
+            if (top instanceof ImmediateContext) {
+                // Restore the program state from the frame
+                return [top.start, top.oldpc, top.programstate]
+            }
+            this.pop()
+        }
+    }
+
+    public root() : RootContext {
+        return this.current.root
+    }
+
+    public state() : StateContext {
+        return this.current.state
+    }
+
+    public parent() : BaseContext {
+        return this.current.parent
+    }
+
+    public dump(title: string) {
+        wto("Context Stack: " + title)
+        this.stack.forEach(context => context.dump())
+        this.current.dump()
+    }
+}
+abstract class BaseContext {
+
+    public root : RootContext
+    public state: StateContext
+    public parent: BaseContext
+
+    protected link(root: RootContext, state: StateContext, parent: BaseContext) {
+        this.root = root
+        this.state = state
+        this.parent = parent
+    }
+
+    public abstract dump() : void
+
+}
+
+
+class StateContext extends BaseContext {
 
     protected nscalar : { [name: string] : number}
     protected nvector : { [name: string] : NVector}
@@ -20,45 +226,44 @@ class Context {
     protected svector : { [name: string] : SVector}
     protected sarray  : { [name: string] : SArray}
 
-    // The stack used to manage subroutines, for-loops and UDFs
-    public controlstack: ControlStack
-
-    public constructor(protected _parent: Context, protected _owner: Program) {
-        this.controlstack = new ControlStack(this)
-        this.data = new Data
-        this.clear()
-    }
-
-    public get owner() : Program { return this._owner; }
-
-    public terminate() : void {
-        this.owner.terminate()
+    public dump() {
+        wto("StateContext")
     }
 
     public clear() : void {
-
         this.nscalar = {}
         this.sscalar = {}
         this.nvector = {}
         this.svector = {}
         this.narray  = {}
         this.sarray  = {}
-
-        this.controlstack.clear();
-        this.data.clear();
     }
+
+    public constructor(parent: BaseContext) {
+        super()
+        this.link(parent ? parent.root : null, this, parent)
+        this.nscalar = {}
+        this.sscalar = {}
+        this.nvector = {}
+        this.svector = {}
+        this.narray  = {}
+        this.sarray  = {}
+      }
 
     // ---------------------------------------------------------------------
     // Scalar Management
     // ---------------------------------------------------------------------
 
-    protected ownerOfNScalar(name: string) : Context {
+    protected ownerOfNScalar(name: string) : StateContext {
 
         if (name in this.nscalar) {
+            // We have the state for this scalar
             return this
         }
-        else if (this._parent != null) {
-            return this._parent.ownerOfNScalar(name)
+        else if (this.parent != null) {
+            // We don't have the state for this scalar so advance to the
+            // context that manages the parent's state
+            return this.parent.state.ownerOfNScalar(name)
         }
         else {
             // This is the top level. New variables will be created here.
@@ -68,7 +273,24 @@ class Context {
 
     public setScalar(name: string, value: number) {
         this.nscalar[name] = value
+    }
 
+    protected ownerOfSScalar(name: string) : StateContext {
+
+        if (name in this.sscalar) {
+            return this;
+        }
+        else if (this.parent != null) {
+            return this.parent.state.ownerOfSScalar(name)
+        }
+        else {
+            // This is the top level. New variables will be created here.
+            return this;
+        }
+    }
+
+    public set$(name: string, value: string) : void {
+        this.sscalar[name] = value
     }
 
     public getNumber(name: string) : number {
@@ -84,24 +306,6 @@ class Context {
         return owner.nscalar[name]
     }
 
-    protected ownerOfSScalar(name: string) : Context {
-
-        if (name in this.sscalar) {
-            return this;
-        }
-        else if (this._parent != null) {
-            return this._parent.ownerOfSScalar(name)
-        }
-        else {
-            // This is the top level. New variables will be created here.
-            return this;
-        }
-    }
-
-    public set$(name: string, value: string) : void {
-        this.sscalar[name] = value
-    }
-
     public getString(name: string) : string {
         // Search up the stack of contexts looking for the first definition
         // of this name, or, if there is none, the top level context where
@@ -113,7 +317,6 @@ class Context {
         if (!(name in owner.sscalar)) throw new Utility.RunTimeError(ErrorCode.UnassignedString)
         return owner.sscalar[name]
     }
-
 
     // ---------------------------------------------------------------------
     // Vector Management
@@ -128,13 +331,11 @@ class Context {
         }
     }
 
-
     public dimVector(name: string, bound: number) : void {
         // We can't dimension a vector if it already exists
         if (name in this.nvector || name in this.narray) throw new Utility.RunTimeError(ErrorCode.ReDim);
         this.nvector[name] = new NVector(this.dimension(bound));
     }
-
 
     public setVector(name: string, subscript: number, value: number) : void {
         // Before we can check if the index is in range, we must make sure the
@@ -172,13 +373,11 @@ class Context {
         return vector.elements[index]
     }
 
-
     public dimVector$(name: string, bound: number) : void {
         // We can't dimension a vector if it already exists
         if (name in this.svector || name in this.sarray) throw new Utility.RunTimeError(ErrorCode.ReDim)
         this.svector[name] = new SVector(this.dimension(bound))
     }
-
 
     public setVector$(name: string, subscript: number, value: string) : void {
         // Before we can check if the index is in range, we must make sure the
@@ -218,7 +417,6 @@ class Context {
     // ---------------------------------------------------------------------
     // Array Management
     // ---------------------------------------------------------------------
-
 
     public getArray(name: string,  col: number, row: number) : number {
 
@@ -260,7 +458,6 @@ class Context {
         this.narray[name] = new NArray(this.dimension(colBound), this.dimension(rowBound))
     }
 
-
     public getArray$(name: string, col: number, row: number) : string {
         // Make sure the array exists, declaring it by default if necessary
         if (!(name in this.sarray)) this.dimArray$(name, 10, 10)
@@ -299,9 +496,148 @@ class Context {
         if (name in this.svector || name in this.sarray) throw new Utility.RunTimeError(ErrorCode.ReDim);
         this.sarray[name] = new SArray(this.dimension(colBound), this.dimension(rowBound));
     }
+}
 
+class EndContext extends Context {
+}
+
+class UDFContext extends StateContext {
+
+    public constructor(parent: BaseContext, public readonly pc: number) {
+        super(parent)
+    }
+
+    public dump() {
+        wto("UDFContext pc=" + this.pc)
+    }
+}
+
+
+class RootContext extends StateContext {
+
+    // The data defined by the program for READ
+    public data: Data;
+
+    // The I/O channels as seen by this program. Channel 0 is the tty
+    protected _channels: Channels
+    public get channels() { return this._channels; }
+    protected currentInput: TerminalChannel
+    protected currentOutput: TerminalChannel
+
+    public constructor(public readonly session: Session.Session, public readonly program: Program) {
+        super(null)
+        this.link(this, this, null)
+
+        this._channels = new Channels
+        this._channels.set(0, new TTYChannel(session))
+        this.currentInput = <TerminalChannel>this._channels.get(0)
+        this.currentOutput = <TerminalChannel>this._channels.get(0)
+
+        this.data = new Data
+    }
+
+    public clear() {
+        super.clear()
+        this.data.clear()
+    }
+
+        protected closeChannels() : void {
+        // No channel I/O yet
+        this.currentInput = <TerminalChannel>this._channels.get(0)
+        this.currentOutput = <TerminalChannel>this._channels.get(0)
+    }
+
+    public setInputChannel(channel: TerminalChannel) {
+        this.currentInput = channel
+    }
+
+    public setOutputChannel(channel: TerminalChannel) {
+        this.currentOutput = channel
+    }
+
+    public getOutputChannel() : TerminalChannel{
+        return this.currentOutput
+    }
+
+    public getInputChannel() : TerminalChannel{
+        return this.currentInput
+    }
+
+    public dump() {
+        wto("RootContext")
+    }
+}
+
+class ForNextContext extends BaseContext {
+
+    public constructor(public readonly parent: BaseContext,
+                       public readonly control: NScalarRef,
+                       public readonly to: number,
+                       public readonly step: number,
+                       public readonly pc: number) {
+        super()
+        this.link(parent.root, parent.state, parent)
+    }
+
+    public dump() {
+        wto("ForNextContext control=" + this.control.source() + " to=" + this.to + " step=" + this.step + " pc=" + this.pc)
+    }
 
 }
+
+class GosubReturnContext extends BaseContext {
+
+    public constructor(public readonly parent: BaseContext,
+                       public readonly pc: number) {
+        super()
+        this.link(parent.root, parent.state, parent)
+    }
+
+    public dump() {
+        wto("GosubReturnContext pc=" + this.pc)
+    }
+
+}
+
+class ImmediateContext extends BaseContext {
+
+    public constructor(public readonly parent: BaseContext,
+                       public readonly start: number,
+                       public readonly oldpc: number,
+                       public readonly programstate: ProgramState) {
+        super()
+        this.link(parent.root, parent.state, parent)
+    }
+
+    public dump() {
+        wto("ImmediateContext start=" + this.start + " oldpc=" + this.oldpc + " programstate=" + ProgramState[this.programstate])
+    }
+}
+
+    // The array index of the next line (not the statement number, which
+    // is stmtIndex / 100)
+    //public stmtIndex: number
+
+    // The array index of the next statement to execute
+    //public nextStmtIndex: number
+
+
+
+    // The stack used to manage subroutines, for-loops and UDFs
+    //public controlstack: ControlStack
+
+    //public constructor(protected _parent: Context, protected _owner: Program) {
+    //    this.controlstack = new ControlStack(this)
+    //    this.data = new Data
+    //    this.clear()
+    //}
+
+    //public get owner() : Program { return this._owner; }
+
+    //public terminate() : void {
+    //    this.owner.terminate()
+    //}
+//}
 
 
 class NVector {

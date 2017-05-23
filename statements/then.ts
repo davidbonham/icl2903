@@ -10,7 +10,6 @@ class Then extends Statement {
     }
 
     public execute(context: Context) : boolean {
-        context.nextStmtIndex = this.line * 100
         return false
     }
 

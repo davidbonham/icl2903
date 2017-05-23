@@ -143,8 +143,7 @@ abstract class GoSimple extends GoBase {
 
 class GotoStmt extends GoSimple {
     public execute(context: Context) : boolean {
-        context.nextStmtIndex = this.lineNumber*100
-        return false;
+        return false
     }
 
     public compile(vm: Vm) {
@@ -157,8 +156,6 @@ class GotoStmt extends GoSimple {
 
 class GosubStmt extends GoSimple {
     public execute(context: Context) : boolean {
-        context.controlstack.doGosub(0);
-        context.nextStmtIndex = this.lineNumber*100
         return false;
     }
 
@@ -216,10 +213,6 @@ abstract class GoLines extends GoBase {
 class GotoOfStmt extends GoLines {
 
     public execute(context: Context) : boolean {
-        const line = this.destination(context);
-        if (line < 0) return true;
-
-        context.nextStmtIndex = line * 100
         return false;
     }
 
@@ -233,12 +226,6 @@ class GotoOfStmt extends GoLines {
 class GosubOfStmt extends GoLines {
 
     public execute(context: Context) : boolean {
-
-        const line = this.destination(context)
-        if (line < 0) return true
-
-        context.controlstack.doGosub(0)
-        context.nextStmtIndex = line * 100
         return false
     }
 

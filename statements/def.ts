@@ -146,7 +146,7 @@ abstract class DefStmt extends Statement {
     }
 
     public prepare(context: Context, line: number) {
-        context.owner.declareUdf(this.name, line)
+        context.root().program.declareUdf(this.name, line)
     }
 
     public execute(context: Context) : boolean {
@@ -174,14 +174,14 @@ abstract class DefStmt extends Statement {
 
         // Create a new child context in which we will bind our parameters to the
         // values of the argument expression.
-        let child = new Context(context, context.owner)
+        context.pushUDF(12345)
 
         for (let i = 0; i < args.length; ++i) {
             const argument = args[i]
             if (argument instanceof NumericExpression) {
                 const parameter = this.parameters.variables[i]
                 if (parameter instanceof NScalarRef) {
-                    parameter.set(child, argument.value(context))
+                    parameter.set(context, argument.value(context))
                 }
                 else {
                     throw new Utility.RunTimeError(ErrorCode.InvArg)
@@ -190,7 +190,7 @@ abstract class DefStmt extends Statement {
             else if (argument instanceof StringExpression) {
                 const parameter = this.parameters.variables[i]
                 if (parameter instanceof SScalarRef) {
-                    parameter.set$(child, argument.value(context))
+                    parameter.set$(context, argument.value(context))
                 }
                 else {
                     throw new Utility.RunTimeError(ErrorCode.InvArg)
@@ -198,7 +198,7 @@ abstract class DefStmt extends Statement {
             }
         }
 
-        return child
+        return context
     }
 }
 
@@ -276,8 +276,8 @@ class DefBlockStmtN extends DefStmt {
 
         // Check that there is no DEF or END before the next FNEND and that
         // there is an FNEND.
-        this.line = context.owner.findFnend(line)
-        context.owner.declareUdf(this.name, line)
+        this.line = context.root().program.findFnend(line)
+        context.root().program.declareUdf(this.name, line)
     }
 
     public call(context: Context, args: (StringExpression|NumericExpression)[]): number {
@@ -288,7 +288,7 @@ class DefBlockStmtN extends DefStmt {
         // The legal limits of the statements we can execute as part of
         // the function definition block
         const firstIndex = this.line
-        const fnendIndex = child.owner.findFnend(this.line)
+        const fnendIndex = child.root().program.findFnend(this.line)
 
         // Start at the first statement following the DEF and continue
         // executing them until we hit the FNEND or attempt to leave the
@@ -297,7 +297,7 @@ class DefBlockStmtN extends DefStmt {
         while (child.nextStmtIndex != fnendIndex) {
 
             if (firstIndex <= child.nextStmtIndex && child.nextStmtIndex < fnendIndex) {
-                child.owner.step(child, "")
+                child.root().program.step(child, "")
             }
             else {
                 throw new Utility.RunTimeError(ErrorCode.InvExit)
@@ -307,13 +307,13 @@ class DefBlockStmtN extends DefStmt {
         // We're at the end of the function definition block. Our child
         // context's control stack should be empty with no active FOR or
         // GOSUBs.
-        if (!child.controlstack.empty()) {
+        if (child instanceof GosubReturnContext || child instanceof ForNextContext) {
             throw new Utility.RunTimeError(ErrorCode.InvExit)
         }
 
         // All is well so our result is the current value of our name in
         // the child context
-        return child.getNumber(this.name)
+        return child.state().getNumber(this.name)
     }
 
     public compile(vm: Vm) {

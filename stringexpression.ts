@@ -678,7 +678,7 @@ class SScalarRef extends SRef {
     }
 
     public value(context: Context) : string {
-        return context.getString(this.name)
+        return context.state().getString(this.name)
     }
 
     public source() : string {
@@ -686,7 +686,7 @@ class SScalarRef extends SRef {
     }
 
     public set$(context: Context, value: string) {
-        context.set$(this.name, value)
+        context.state().set$(this.name, value)
     }
 
     public hasConstantSubscripts() : boolean {
@@ -704,11 +704,11 @@ class SScalarRef extends SRef {
     }
 
     public static SSS(context: Context, id: string, value: string) {
-        context.set$(id, value)
+        context.state().set$(id, value)
     }
 
     public static SS(context: Context, id: string) : string {
-        return context.getString(id)
+        return context.state().getString(id)
     }
 
 }
@@ -720,7 +720,7 @@ class SVectorRef extends SRef {
     }
 
     public value(context: Context) : string {
-        return context.getVector$(this.name, this.col.value(context))
+        return context.state().getVector$(this.name, this.col.value(context))
     }
 
     public source() : string {
@@ -728,7 +728,7 @@ class SVectorRef extends SRef {
     }
 
     public set$(context: Context, value: string) : void {
-        context.setVector$(this.name, this.col.value(context), value)
+        context.state().setVector$(this.name, this.col.value(context), value)
     }
 
     public hasConstantSubscripts() : boolean {
@@ -736,7 +736,7 @@ class SVectorRef extends SRef {
     }
 
     public prepare(context: Context) : void {
-        context.dimVector$(this.name, this.col.value(context))
+        context.state().dimVector$(this.name, this.col.value(context))
     }
 
     public compileAssign(vm: Vm) {
@@ -748,11 +748,11 @@ class SVectorRef extends SRef {
     }
 
     public static SVS(context: Context, id: string, col: number, value: string) : void {
-        context.setVector$(id, col, value)
+        context.state().setVector$(id, col, value)
     }
 
     public static VS(context: Context, id: string, col: number) : string {
-        return context.getVector$(id, col)
+        return context.state().getVector$(id, col)
     }
 
 }
@@ -765,7 +765,7 @@ class SArrayRef extends SRef {
         super()
     }
     public value(context: Context) : string {
-        return context.getArray$(this.name, this.col.value(context), this.row.value(context))
+        return context.state().getArray$(this.name, this.col.value(context), this.row.value(context))
     }
 
     public source() : string {
@@ -773,7 +773,7 @@ class SArrayRef extends SRef {
     }
 
     public set$(context: Context, value: string) : void {
-        context.setArray$(this.name, this.col.value(context), this.row.value(context), value)
+        context.state().setArray$(this.name, this.col.value(context), this.row.value(context), value)
     }
 
     public hasConstantSubscripts() : boolean {
@@ -781,7 +781,7 @@ class SArrayRef extends SRef {
     }
 
     public prepare(context: Context) : void {
-        context.dimArray$(this.name, this.col.value(context), this.row.value(context));
+        context.state().dimArray$(this.name, this.col.value(context), this.row.value(context));
     }
 
     public compileAssign(vm: Vm) {
@@ -794,11 +794,11 @@ class SArrayRef extends SRef {
     }
 
     public static AS(context: Context, id: string, col: number, row: number) : string {
-        return context.getArray$(id, col, row)
+        return context.state().getArray$(id, col, row)
     }
 
     public static SAS(context: Context, id: string, col: number, row: number, value: string) : void {
-        context.setArray$(id, col, row, value)
+        context.state().setArray$(id, col, row, value)
     }
 
 }

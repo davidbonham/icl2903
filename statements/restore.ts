@@ -27,7 +27,6 @@ class RestoreStmt extends Statement {
     }
 
     public execute(context: Context) : boolean {
-        context.data.restore(this.lineNumber)
         return false
     }
 

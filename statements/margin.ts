@@ -12,7 +12,7 @@ class MarginStmt extends Statement {
     public execute(context: Context) : boolean {
 
         const channelNumber = this.channel == null ? 0 : Utility.round(this.channel.value(context))
-        const tty = context.owner.channels.get(channelNumber)
+        const tty = context.root().channels.get(channelNumber)
 
         if (!tty) {
             throw new Utility.RunTimeError(ErrorCode.FileNotOpen)
