@@ -10,9 +10,9 @@ abstract class ChangeStmt extends Statement {
         if (scanner.consumeNid()) {
             // CHANGE N TO S - N must be a vector
             const nid = scanner.current().text
-            if (scanner.consumeKeyword("TO") && scanner.consumeSid()) {
-                const sid = scanner.current().text
-                return new ChangeNtoS(nid, sid)
+            let sref: SRef
+            if (scanner.consumeKeyword("TO") && (sref = SRef.parse(scanner))) {
+                return new ChangeNtoS(nid, sref)
             }
         }
         else if ((sexpr = StringExpression.parse(scanner))) {
@@ -29,12 +29,12 @@ abstract class ChangeStmt extends Statement {
 
 class ChangeNtoS extends ChangeStmt {
 
-    public constructor(protected readonly nid: string, protected readonly sid: string) {
+    public constructor(protected readonly nid: string, protected readonly sref: SRef) {
         super()
     }
 
     public source() : string {
-        return "CHANGE " + this.nid + " TO " + this.sid
+        return "CHANGE " + this.nid + " TO " + this.sref.source()
     }
 
     public execute(context: Context) : boolean
@@ -56,9 +56,18 @@ class ChangeNtoS extends ChangeStmt {
         }
 
         // Store the resuld in the string variable
-        context.state().set$(this.sid, result)
+        //context.state().set$(this.sref, result)
 
         return true;
+    }
+
+    public compile(vm: Vm) {
+        // Form the string from N and leave it on the stack
+        vm.emit([Op.CVS, this.nid])
+        // Assign to the string
+        this.sref.compileAssign(vm)
+        // Discard the string still on the stack
+        vm.emit1(Op.DROP)
     }
 }
 
@@ -90,4 +99,10 @@ class ChangeStoN extends ChangeStmt {
         return true;
     }
 
+    public compile(vm: Vm) {
+        // Place the string on the stack
+        this.sexpr.compile(vm)
+        // Place it in the vector
+        vm.emit([Op.CSV, this.nid])
+    }
 }

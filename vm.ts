@@ -51,6 +51,8 @@ enum Op {
     // One Operand
     AN = 0x100, // C R          => N,           value of numeric array element
     AS,         // C R          => S            value of string array element
+    CVS,        //              => S            build string from vector and push
+    CSV,        // S            =>              place string in vector
     FOR,        // V V V        =>              push a FOR onto the control stack
     JF,         // L            =>
     JMP,        //                              jump unconditionally
@@ -206,6 +208,8 @@ class Vm {
         Vm.opmap[Op.AND]    = Vm.AND
         Vm.opmap[Op.AS]     = Vm.AS
         Vm.opmap[Op.CALL]   = Vm.CALL
+        Vm.opmap[Op.CSV]    = Vm.CSV
+        Vm.opmap[Op.CVS]    = Vm.CVS
         Vm.opmap[Op.DIV]    = Vm.DIV
         Vm.opmap[Op.DROP]   = Vm.DROP
         Vm.opmap[Op.EIS]    = Vm.EIS
@@ -524,6 +528,43 @@ class Vm {
             vm.pc = vm.pcForLine(context, line)
         }
     }
+
+    protected static CSV(vm: Vm, context: Context) : void {
+        const value = vm.popString()
+        const nid = vm.argS()
+
+        // Set the length into element 0
+        context.state().setVector(nid, 0.0, value.length)
+
+        // Now set each character into the subsequent elements
+        for (let i = 0; i < value.length; ++i) {
+            const code = Scanner.characterSet.indexOf(value[i])
+            context.state().setVector(nid, i+1, code)
+        }
+    }
+
+    protected static CVS(vm: Vm, context: Context) : void {
+
+        const nid = vm.argS()
+        let result : string = ""
+
+        // The zeroth array element holds the number of characters it holds
+        const length = Utility.round(context.state().getVector(nid, 0.0))
+        for (let i = 1; i <= length; ++i){
+
+            // Get the next character code - it's an ICL code so 0..63
+            const element = Utility.round(context.state().getVector(nid, i))
+            if (element < 0 || 63 < element) throw new Utility.RunTimeError(ErrorCode.InvArg)
+
+            // Convert it into the corresponding character and add it to
+            // the string result
+            const ch = Scanner.characterSet[element]
+            result += ch;
+        }
+
+        vm.push(result)
+    }
+
 
     protected static DIV(vm: Vm, context: Context) : void {
         vm.binaryOpNN((lhs, rhs) => lhs / rhs)
