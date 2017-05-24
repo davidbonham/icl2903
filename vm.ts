@@ -24,6 +24,7 @@ enum Op {
     LT,         // V V          => V < V        test inequality
     MAX,        // V V          => V            max of two values
     MIN,        // V V          => V            min of two values
+    MRG,        // N N          =>              set the margin for a channel
     MUL,        // N1 N2        => N1*N2        multiply
     NEG,        // N            => -N ,         Negate
     NE,         // V V          => V != V       test inequality
@@ -231,6 +232,7 @@ class Vm {
         Vm.opmap[Op.LT]     = Vm.LT
         Vm.opmap[Op.MAX]    = Vm.MAX
         Vm.opmap[Op.MIN]    = Vm.MIN
+        Vm.opmap[Op.MRG]    = Vm.MRG
         Vm.opmap[Op.MUL]    = Vm.MUL
         Vm.opmap[Op.NE]     = Vm.NE
         Vm.opmap[Op.NEG]    = Vm.NEG
@@ -741,6 +743,23 @@ class Vm {
 
     protected static MIN(vm: Vm, context: Context) : void {
         vm.binaryOpNN((lhs, rhs) => lhs < rhs ? lhs : rhs)
+    }
+
+    protected static MRG(vm: Vm, context: Context) : void {
+        const margin = Utility.round(vm.popNumber())
+        const channel = Utility.round(vm.popNumber())
+        const tty = context.root().channels.get(channel)
+
+        if (!tty) {
+            throw new Utility.RunTimeError(ErrorCode.FileNotOpen)
+        }
+        else if (tty instanceof TerminalChannel) {
+            if (margin <= 0 || Channel.MAX_MARGIN < margin) throw new Utility.RunTimeError(ErrorCode.InvArg);
+            tty.margin(margin)
+        }
+        else {
+            throw new Utility.RunTimeError(ErrorCode.FileWrongType)
+        }
     }
 
     protected static MUL(vm: Vm, context: Context) : void {

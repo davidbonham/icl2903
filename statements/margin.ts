@@ -31,6 +31,23 @@ class MarginStmt extends Statement {
         return true;
     }
 
+    public compile(vm: Vm) {
+
+        // Evaluate the channel
+        if (this.channel) {
+            this.channel.compile(vm)
+        }
+        else {
+            vm.emit([Op.PUSH, 0])
+        }
+
+        // Evaluate the margin expression
+        this.margin.compile(vm)
+
+        // Set the margin
+        vm.emit1(Op.MRG)
+    }
+
     public static parse(scanner: Scanner) : MarginStmt {
 
         if (!scanner.consumeKeyword("MARGIN")) return null
