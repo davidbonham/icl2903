@@ -11,10 +11,6 @@ class ReturnStmt extends Statement {
         return "RETURN"
     }
 
-    public execute(context: Context) : boolean {
-        return false
-    }
-
     public compile(vm: Vm) {
         vm.emit1(Op.RET)
     }

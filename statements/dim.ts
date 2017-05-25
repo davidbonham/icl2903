@@ -45,10 +45,6 @@ class DimStmt extends Statement
         return "DIM " + this.items.map(item => item.source()).join(",")
     }
 
-    public execute(context: Context) : boolean {
-        return true;
-    }
-
     public prepare(context: Context, line: number) : void
     {
         for (const item of this.items) {

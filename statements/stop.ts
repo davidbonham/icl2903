@@ -14,21 +14,6 @@ class StopStmt extends Statement
         return "STOP";
     }
 
-    public execute(context: Context) : boolean
-    {
-        // There may be a pending new line on the tty
-        const channel = context.root().channels.get(0)
-        if (channel instanceof TerminalChannel) {
-            channel.writes("")
-            channel.eol()
-            throw new Utility.RunTimeError("STOP");
-        }
-        else {
-            throw new Utility.RunTimeError(ErrorCode.BugCheck);
-        }
-
-    }
-
     public compile(vm: Vm) {
         vm.emit1(Op.STOP)
     }

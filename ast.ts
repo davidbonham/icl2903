@@ -70,7 +70,6 @@ abstract class Statement extends ASTNode {
     public  compile(vm : Vm) : void {
         Utility.bugcheck("not implemented");
     }
-    public abstract execute(context: Context) : boolean
 
     public isImmediateStatement() : boolean {
         return true;
@@ -98,18 +97,6 @@ class SequenceStmt extends Statement
     public  source() : string {
         return this.statement.source() + (this.next != null ? "!" + this.next.source() : "");
     }
-
-    public execute(context: Context) : boolean {
-
-        return this.statement.execute(context)
-        // In this implementation, we expect to expand sequence statements
-        // into the program contents so we only ever execute the first
-        // statement in the sequence. This expansion solves two problems:
-        //
-        // 1. In FOR I=1 TO 1E20! PRINT I!NEXT I, we poll for interrupts in
-        //    the loop
-        // 2. In IF 1=1 THEN 50!GOTO 400, we won't execute the GOTO
-     }
 
     public compile(vm: Vm) {
         this.statement.compile(vm)

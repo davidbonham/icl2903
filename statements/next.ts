@@ -9,10 +9,6 @@ class NextStmt extends Statement {
         return "NEXT " + this.index.source()
     }
 
-    public execute(context: Context) : boolean {
-        return false;
-    }
-
     protected constructor(public readonly index: NScalarRef) {
         super()
     }

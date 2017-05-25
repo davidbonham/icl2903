@@ -8,12 +8,6 @@ class RandomiseStmt extends Statement
         return this.keyword + (this.nexpr == null ? "" : (' ' + this.nexpr.source()));
     }
 
-    public execute(context: Context) : boolean {
-        // There is no way to set the seed of the javascript random number
-        // generator.
-        return true;
-    }
-
     public static parse(scanner: Scanner) : RandomiseStmt {
         scanner.mark();
         if (scanner.consumeKeyword("RANDOMISE") || scanner.consumeKeyword("RANDOMIZE")) {

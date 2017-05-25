@@ -85,46 +85,6 @@ class ChainStmt extends Statement {
         return result
     }
 
-    public execute(context: Context) : boolean {
-
-        // We haven't implemented channel handling yet
-        if (this.channels.length > 0) throw new Utility.RunTimeError(ErrorCode.NotImp)
-
-        const root = context.root()
-        const program = root.program
-
-        // We need to replace the current program with the one held in memory
-        const name = this.name.value(context)
-        const loader = new FileLoader(program.session, name)
-
-        const contents = loader.getRecords()
-        if (typeof(contents) == "string") {
-            throw new Utility.RunTimeError(contents)
-        }
-        else if (contents.type == 'B') {
-
-            // Clear the existing program
-            program.delete(1, Scanner.MAX_LINE)
-
-            // Load the current program
-            loader.loadBasic(contents.contents)
-            program.name = name
-            program.isData = false
-
-            // Clear the existing contexts
-            context.clear()
-
-            // If we have a line number, set that as the next one else
-            // atart from the beginning
-            program.run(this.line, context, false)
-        }
-        else {
-            throw new Utility.RunTimeError(ErrorCode.FileWrongType)
-        }
-
-        return false
-    }
-
     public compile(vm: Vm) {
 
         // As we don't yet implement propagation of channels, if there are

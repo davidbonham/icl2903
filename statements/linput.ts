@@ -64,23 +64,6 @@ class LinputStmt extends Statement {
         return "LINPUT " + channelText + itemsText
     }
 
-    public execute(context: Context ) : boolean {
-
-        // Work out the channel number and get it out of the program's
-        // open channels
-        const channelNumber = this.channel == null ? 0 : Utility.round(this.channel.value(context))
-        const channel = context.root().channels.get(channelNumber)
-
-        // We must be connected to a terminal format file
-        if (!(channel instanceof TerminalChannel)) throw new Utility.RunTimeError(ErrorCode.FileWrongType)
-
-        // Interactive input from a tty must be handled via the UI callback
-        // mechanism
-        //return channel instanceof TTYChannel ? this.interactiveInput(context, channel)
-        //                                     : this.fileInput(context, channel)
-        return false
-    }
-
     public compile(vm: Vm) {
 
         // Emit code to set the input channel and reset it ready for input

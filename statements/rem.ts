@@ -17,10 +17,6 @@ class RemStmt extends Statement {
         return this.rest
     }
 
-    public execute(context: Context) : boolean {
-        return false
-    }
-
     protected constructor(protected readonly rest: string){
         super()
     }

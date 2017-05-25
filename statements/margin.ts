@@ -9,28 +9,6 @@ class MarginStmt extends Statement {
         return "MARGIN " + channelText + this.margin.source();
     }
 
-    public execute(context: Context) : boolean {
-
-        const channelNumber = this.channel == null ? 0 : Utility.round(this.channel.value(context))
-        const tty = context.root().channels.get(channelNumber)
-
-        if (!tty) {
-            throw new Utility.RunTimeError(ErrorCode.FileNotOpen)
-        }
-        else if (tty instanceof TerminalChannel) {
-
-            const margin = Utility.round(this.margin.value(context))
-            if (margin <= 0 || Channel.MAX_MARGIN < margin) throw new Utility.RunTimeError(ErrorCode.InvArg);
-
-            tty.margin(margin)
-        }
-        else {
-            throw new Utility.RunTimeError(ErrorCode.FileWrongType)
-        }
-
-        return true;
-    }
-
     public compile(vm: Vm) {
 
         // Evaluate the channel

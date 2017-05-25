@@ -37,30 +37,6 @@ class ChangeNtoS extends ChangeStmt {
         return "CHANGE " + this.nid + " TO " + this.sref.source()
     }
 
-    public execute(context: Context) : boolean
-    {
-        let result = "";
-
-        // The zeroth array element holds the number of characters it holds
-        const length = Utility.round(context.state().getVector(this.nid, 0.0))
-        for (let i = 1; i <= length; ++i){
-
-            // Get the next character code - it's an ICL code so 0..63
-            const element = Utility.round(context.state().getVector(this.nid, i))
-            if (element < 0 || 63 < element) throw new Utility.RunTimeError(ErrorCode.InvArg)
-
-            // Convert it into the corresponding character and add it to
-            // the string result
-            const ch = Scanner.characterSet[element]
-            result += ch;
-        }
-
-        // Store the resuld in the string variable
-        //context.state().set$(this.sref, result)
-
-        return true;
-    }
-
     public compile(vm: Vm) {
         // Form the string from N and leave it on the stack
         vm.emit([Op.CVS, this.nid])
@@ -80,23 +56,6 @@ class ChangeStoN extends ChangeStmt {
 
     public source() : string {
         return "CHANGE " + this.sexpr.source() + " TO " + this.nid
-    }
-
-    public execute(context: Context) : boolean {
-
-        // The string to be changed
-        const text = this.sexpr.value(context)
-
-        // Set the length into element 0
-        context.state().setVector(this.nid, 0.0, text.length)
-
-        // Now set each character into the subsequent elements
-        for (let i = 0; i < text.length; ++i) {
-            const code = Scanner.characterSet.indexOf(text[i])
-            context.state().setVector(this.nid, i+1, code)
-        }
-
-        return true;
     }
 
     public compile(vm: Vm) {

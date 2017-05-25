@@ -142,9 +142,6 @@ abstract class GoSimple extends GoBase {
 }
 
 class GotoStmt extends GoSimple {
-    public execute(context: Context) : boolean {
-        return false
-    }
 
     public compile(vm: Vm) {
         // Put the destination line number on the stack
@@ -155,9 +152,6 @@ class GotoStmt extends GoSimple {
 }
 
 class GosubStmt extends GoSimple {
-    public execute(context: Context) : boolean {
-        return false;
-    }
 
     public compile(vm: Vm) {
         // Put the destination line number on the stack
@@ -212,10 +206,6 @@ abstract class GoLines extends GoBase {
 
 class GotoOfStmt extends GoLines {
 
-    public execute(context: Context) : boolean {
-        return false;
-    }
-
     public compile(vm: Vm) {
         this.compileSelection(vm)
         vm.emit1(Op.GO)
@@ -224,10 +214,6 @@ class GotoOfStmt extends GoLines {
 
 
 class GosubOfStmt extends GoLines {
-
-    public execute(context: Context) : boolean {
-        return false
-    }
 
     public compile(vm: Vm) {
         this.compileSelection(vm)

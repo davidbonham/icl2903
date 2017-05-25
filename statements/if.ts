@@ -6,10 +6,6 @@ class IfStmt extends Statement {
         return "IF " + this.condition.source() + ' ' + (this.then ? "THEN " : "") + this.consequence.source()
     }
 
-    public execute(context: Context) : boolean {
-        return this.condition.value(context) ? this.consequence.execute(context) : true
-    }
-
     public compile(vm: Vm) {
         this.condition.compile(vm)
         const jmp = vm.mark(2)

@@ -68,12 +68,6 @@ class InputStmt extends Statement {
         return "INPUT " + channelText + itemsText
     }
 
-
-    public execute(context: Context) : boolean
-    {
-        return false
-    }
-
     public static SIC(context: Context, channel: number) {
         const channelNumber = Utility.round(channel)
         context.root().setInputChannel(<TerminalChannel>context.root().channels.get(channelNumber))

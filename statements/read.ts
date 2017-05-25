@@ -77,11 +77,5 @@ class ReadStmt extends Statement {
             item.compile(vm, true)
         })
     }
-
-    public execute(context: Context) : boolean  {
-
-
-        return true;
-    }
 }
 

@@ -11,10 +11,6 @@ class ForStmt extends Statement {
                + (this.step == null ? "" : " STEP " + this.step.source())
     }
 
-    public execute(context: Context) : boolean {
-        return false;
-    }
-
     protected constructor(protected index: NScalarRef,
                           protected readonly from: NumericExpression,
                           protected readonly to: NumericExpression,

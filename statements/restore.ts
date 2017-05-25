@@ -26,10 +26,6 @@ class RestoreStmt extends Statement {
         return "RESTORE " + (this.lineNumber < 0 ? "" : this.lineNumber)
     }
 
-    public execute(context: Context) : boolean {
-        return false
-    }
-
     public renumber(lineMap: number[]) : void {
         if (this.lineNumber in lineMap) this.lineNumber = lineMap[this.lineNumber]
     }

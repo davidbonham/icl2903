@@ -218,10 +218,6 @@ class PrintStmt extends Statement {
         return "PRINT " + channelText + formatText + itemsText;
     }
 
-    public execute(context: Context) : boolean {
-        return true;
-    }
-
     public static SOC(context: Context, channel: number) {
         const channelNumber = Utility.round(channel)
         context.root().setOutputChannel(<TerminalChannel>context.root().channels.get(channelNumber))

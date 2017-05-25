@@ -9,10 +9,6 @@ class Then extends Statement {
         return this.line.toString()
     }
 
-    public execute(context: Context) : boolean {
-        return false
-    }
-
     public renumber(lineMap: number[]) : void{
         if (this.line in lineMap) this.line = lineMap[this.line]
     }

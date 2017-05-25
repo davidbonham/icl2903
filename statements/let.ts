@@ -82,14 +82,6 @@ class NLetStmt extends LetStmt {
         return (this.hasLet ? "LET " : "") + this.lvs.map((value) => value.source()).join("=") + "=" + this.rhs.source()
     }
 
-    public execute(context: Context) : boolean {
-        const rhs = this.rhs.value(context)
-        for (const nref of this.lvs) {
-            nref.set(context, rhs);
-        }
-        return true;
-    }
-
     public compile(vm: Vm) {
 
         // Generate code to leave the value on the top of the stack
@@ -171,14 +163,6 @@ class SLetStmt extends LetStmt {
     public source() : string {
         this.lvs.map((value) => value.source() + "=").join()
         return (this.hasLet ? "LET " : "") + this.lvs.map((value) => value.source()).join("=") + "=" + this.rhs.source()
-    }
-
-    public execute(context: Context) : boolean {
-        const rhs = this.rhs.value(context)
-        for (const sref of this.lvs) {
-            sref.set$(context, rhs);
-        }
-        return true;
     }
 
     public compile(vm: Vm) {

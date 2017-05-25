@@ -357,26 +357,6 @@ namespace Session {
                 // enter the running state so we can resume stepping through
                 // it.
                 program.runImmediateStatement(start)
-
-                // Immediate statements may raise exceptions. Execute
-                // them in our interactive context. If they produce
-                // output but don't end the line (eg 'PRINT 3;') we
-                // clean up ourselves
-                try {
-                    let vm =
-                    statement.execute(this.commandContext)
-                    this.commandContext.root().channels.closeChannels()
-                }
-                catch (e) {
-                    if (e instanceof Utility.RunTimeError) {
-                        this.commandContext.root().channels.closeChannels()
-                        this.lastError = e.error
-                        this.println(this.lastError)
-                    }
-                    else{
-                        throw e
-                    }
-                }
             }
             else if (typeof(node) == "string") {
 

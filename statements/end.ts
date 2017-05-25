@@ -18,20 +18,7 @@ class EndStmt extends Statement {
         return "END";
     }
 
-    public execute(context: Context) : boolean {
-
-        // There may be a pending new line on the tty but the session
-        // will close all of the channels before it reports the DONE
-
-        // Use the error handling mechanism to generate the end message
-        throw new Utility.RunTimeError("DONE");
-    }
-
     public compile(vm: Vm) {
         vm.emit1(Op.END)
-    }
-
-    public static exec() {
-        throw new Utility.RunTimeError("DONE");
     }
 }
