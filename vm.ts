@@ -6,6 +6,7 @@ enum Op {
     ADD,        // N1 N2        => N1+N2        add
     AND,        // L L          => L
     CALL,       // L            =>              gosub to line L
+    CHN,        // S N          =>              chain to a program
     DIV,        // N1 N2        => N1/N2        divide
     DROP,       // V            => ,            drop item on top of stack
     EIS,        //                              end immediate statement
@@ -54,6 +55,7 @@ enum Op {
     AS,         // C R          => S            value of string array element
     CVS,        //              => S            build string from vector and push
     CSV,        // S            =>              place string in vector
+    ERR,        //                              throw the error
     FOR,        // V V V        =>              push a FOR onto the control stack
     JF,         // L            =>
     JMP,        //                              jump unconditionally
@@ -209,6 +211,7 @@ class Vm {
         Vm.opmap[Op.AND]    = Vm.AND
         Vm.opmap[Op.AS]     = Vm.AS
         Vm.opmap[Op.CALL]   = Vm.CALL
+        Vm.opmap[Op.CHN]    = Vm.CHN
         Vm.opmap[Op.CSV]    = Vm.CSV
         Vm.opmap[Op.CVS]    = Vm.CVS
         Vm.opmap[Op.DIV]    = Vm.DIV
@@ -216,6 +219,7 @@ class Vm {
         Vm.opmap[Op.EIS]    = Vm.EIS
         Vm.opmap[Op.END]    = Vm.END
         Vm.opmap[Op.EQ]     = Vm.EQ
+        Vm.opmap[Op.ERR]    = Vm.ERR
         Vm.opmap[Op.FOR]    = Vm.FOR
         Vm.opmap[Op.GE]     = Vm.GE
         Vm.opmap[Op.GO]     = Vm.GO
@@ -531,6 +535,44 @@ class Vm {
         }
     }
 
+    protected static CHN(vm: Vm, context: Context) : void {
+        const line = vm.popNumber()
+        const name = vm.popString()
+
+        const root = context.root()
+        const program = root.program
+
+        // We need to replace the current program with the one held in memory
+        const loader = new FileLoader(program.session, name)
+
+        const contents = loader.getRecords()
+        if (typeof(contents) == "string") {
+            throw new Utility.RunTimeError(contents)
+        }
+        else if (contents.type == 'B') {
+
+            // Clear the existing program
+            program.delete(1, Scanner.MAX_LINE)
+
+            // Load the current program
+            loader.loadBasic(contents.contents)
+            program.name = name
+            program.isData = false
+
+            // Clear the existing contexts
+            context.clear()
+
+            // If we have a line number, set that as the next one else
+            // atart from the beginning
+            program.run(line, context, false)
+        }
+        else {
+            throw new Utility.RunTimeError(ErrorCode.FileWrongType)
+        }
+
+
+    }
+
     protected static CSV(vm: Vm, context: Context) : void {
         const value = vm.popString()
         const nid = vm.argS()
@@ -578,6 +620,11 @@ class Vm {
 
     protected static EQ(vm: Vm, context: Context) : void {
         vm.logicalOp((lhs, rhs) => lhs == rhs)
+    }
+
+    protected static ERR(vm: Vm, context: Context) : void {
+        const error = vm.argS()
+        throw new Utility.RunTimeError(error)
     }
 
     /**

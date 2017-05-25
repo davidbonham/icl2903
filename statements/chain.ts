@@ -124,4 +124,18 @@ class ChainStmt extends Statement {
 
         return false
     }
+
+    public compile(vm: Vm) {
+
+        // As we don't yet implement propagation of channels, if there are
+        // any we just compile the error
+        if (this.channels.length > 0) {
+            vm.emit([Op.ERR, ErrorCode.NotImp])
+        }
+        else {
+            this.name.compile(vm)
+            vm.emit([Op.PUSH, this.line])
+            vm.emit1(Op.CHN)
+        }
+    }
 }
