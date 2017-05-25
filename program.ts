@@ -617,11 +617,11 @@ class Program {
             // Record the location of this line in the map
             this.vmmap[index] = this.vm.mark(0)
             statement.compile(this.vm)
-            wto("vm " + this.vmmap[index] + ": " + index + " " + statement.source())
+            //wto("vm " + this.vmmap[index] + ": " + index + " " + statement.source())
         })
 
         // Resolve any unknown locations in the object code
         this.vm.prepare(this)
-        this.vm.dump()
+        //this.vm.dump()
     }
 }
