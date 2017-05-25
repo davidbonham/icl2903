@@ -239,6 +239,11 @@ class StateContext extends BaseContext {
         this.sarray  = {}
     }
 
+    // By default, state contexts don't limit the range of execution.
+    public inBounds(line: number) : boolean {
+        return true
+    }
+
     public constructor(parent: BaseContext) {
         super()
         this.link(parent ? parent.root : null, this, parent)
@@ -505,6 +510,11 @@ class UDFContext extends StateContext {
 
     public constructor(parent: BaseContext, public readonly pc: number) {
         super(parent)
+    }
+
+    public inBounds(line: number) : boolean {
+        Utility.bugcheck("not implemented")
+        return false
     }
 
     public dump() {

@@ -675,6 +675,10 @@ class Vm {
     protected static GO(vm: Vm, context: Context) : void {
         const line = vm.popNumber()
         if (line != -1) {
+            // Make sure we aren't branching out of a user-defined function
+            if (!context.state().inBounds(line)) {
+                throw new Utility.RunTimeError(ErrorCode.InvExit)
+            }
             vm.pc = vm.pcForLine(context, line)
         }
     }
