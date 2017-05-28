@@ -47,9 +47,9 @@ class Context {
         this.dump("after pushForNext")
     }
 
-    public pushUDF(pc: number) {
+    public pushUDF(name: string, pc: number) {
         this.stack.push(this.current)
-        this.current = new UDFContext(this.current, pc)
+        this.current = new UDFContext(name, this.current, pc)
     }
 
     public pushImmediate(start: number, oldpc: number, programstate: ProgramState) {
@@ -168,6 +168,45 @@ class Context {
 
     }
 
+    public popUDF() : number {
+        // We have finished a call to a user defined function and the result
+        // is on the stack.
+        for (;;) {
+
+            const top = this.current
+            this.pop()
+
+            if (top instanceof GosubReturnContext) {
+                // We are trying to leave the UDF in the middle of a
+                // subroutine call
+                throw new Utility.RunTimeError(ErrorCode.InvExit)
+            }
+            else if (top instanceof EndContext) {
+                // The prepare step should not have permitted us to get
+                // this far
+                throw new Utility.RunTimeError(ErrorCode.BugCheck)
+            }
+            else if (top instanceof ImmediateContext) {
+                // If we're passing through an immediate frame, that's OK
+                // it just means the user typed something like GOTO 10 so
+                // we carry on to the end of the program and ignore the
+                // saved state.
+            }
+            else if (top instanceof ForNextContext) {
+                // We've jumped out of a FOR loop to the FNEND which is
+                // perfectly fine
+            }
+            else if (top instanceof UDFContext) {
+                // We're done. Return the PC following this call
+                return top.pc
+            }
+            else {
+                // We're not in a UDF
+                throw new Utility.RunTimeError(ErrorCode.BugCheck)
+            }
+        }
+    }
+
     public popImmediate() : [number, number, ProgramState] {
         // We have reached the end of an immediate statement. Unwind any
         // incomplete frames and the immediate frame itself
@@ -237,11 +276,6 @@ class StateContext extends BaseContext {
         this.svector = {}
         this.narray  = {}
         this.sarray  = {}
-    }
-
-    // By default, state contexts don't limit the range of execution.
-    public inBounds(line: number) : boolean {
-        return true
     }
 
     public constructor(parent: BaseContext) {
@@ -508,13 +542,8 @@ class EndContext extends Context {
 
 class UDFContext extends StateContext {
 
-    public constructor(parent: BaseContext, public readonly pc: number) {
+    public constructor(public readonly name: string, parent: BaseContext, public readonly pc: number) {
         super(parent)
-    }
-
-    public inBounds(line: number) : boolean {
-        Utility.bugcheck("not implemented")
-        return false
     }
 
     public dump() {

@@ -59,6 +59,7 @@ class BasicParser
             || DimStmt.parse(scanner)
             || EndStmt.parse(scanner)
             || ForStmt.parse(scanner)
+            || FnendStmt.parse(scanner)
             || GoBase.parse(scanner)
             || IfStmt.parse(scanner)
             || InputStmt.parse(scanner)
@@ -74,6 +75,8 @@ class BasicParser
             || StopStmt.parse(scanner)
             || NLetStmt.parseNLet(false, scanner)
             || SLetStmt.parseSLet(false, scanner)
+            || UdfNStmt.parse(scanner)
+            || UdfSStmt.parse(scanner)
             || MarginStmt.parse(scanner)
     }
 

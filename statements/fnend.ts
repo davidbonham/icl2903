@@ -11,14 +11,11 @@ class FnendStmt extends Statement {
         return "FNEND"
     }
 
-    public execute(context: Context) : boolean {
-        // We should never attempt to execute this statement. If we do,
-        // we must have branched here
-        throw new Utility.RunTimeError(ErrorCode.FnendNotinUdf)
-    }
-
     public compile(vm: Vm) {
-        Utility.bugcheck("unimplemented")
+        // The user should have set the result of our function name in
+        // the context so we need to push it onto the stack before we
+        // pop the context.
+        vm.emit([Op.UV, Op.UFE])
     }
 
 }

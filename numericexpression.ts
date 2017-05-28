@@ -591,20 +591,18 @@ class UdfN extends NFunction {
     }
 
     public value(context: Context) : number {
-        const definition = context.root().program.getUdf(this.name)
-        if (definition instanceof DefExpStmtN || definition instanceof DefBlockStmtN) {
-            return definition.call(context, this.args)
-        }
-        else {
-            // Parser should make this impossible
-            throw new Utility.RunTimeError(ErrorCode.BugCheck)
-        }
+             throw new Utility.RunTimeError(ErrorCode.BugCheck)
     }
 
     public compile(vm: Vm) {
-        Utility.bugcheck("unimplemented")
+        // This is a call to a user defined numeric function and in the
+        // general case, we will not know the definition until run time
+        // so compile code to push the arguments onto the stack and call
+        // the function at which point we can check the signature.
+        this.args.forEach(value => value.compile(vm))
+        vm.emit([Op.PUSH, this.args.length])
+        vm.emit([Op.UNC, this.name])
     }
-
 }
 class UdfS extends SFunction {
 
@@ -635,7 +633,13 @@ class UdfS extends SFunction {
     }
 
     public compile(vm: Vm) {
-        Utility.bugcheck("unimplemented")
+        // This is a call to a user defined string function and in the
+        // general case, we will not know the definition until run time
+        // so compile code to push the arguments onto the stack and call
+        // the function at which point we can check the signature.
+        this.args.forEach(value => value.compile(vm))
+        vm.emit([Op.PUSH, this.args.length])
+        vm.emit([Op.USC, this.name])
     }
 }
 

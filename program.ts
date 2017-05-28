@@ -33,7 +33,7 @@ class Program {
 
 
     // Locations of user defined functions as a map from name to index
-    protected udf: { [name: string]: number; }
+    protected udf: { [name: string]: {line: number, definition: DefStmt}; }
 
     // For handling interactive input, the program must feed lines of input
     // to the pending input statement via this handler
@@ -230,26 +230,16 @@ class Program {
         }
     }
 
-    public declareUdf(name: string, line: number) {
-        this.udf[name] = line
+    public declareUdf(name: string, line: number, definition: DefStmt) {
+        this.udf[name] = {line: line, definition: definition}
     }
 
-    public getUdf(name: string) : DefStmt {
+    public getUdf(name: string) : {line: number, definition: DefStmt} {
 
         // Find the first line of the user defined function and then get
         // its first statement
         if (name in this.udf) {
-            const line = this.udf[name]
-            const sequence = this.contents[line]
-            if (sequence instanceof SequenceStmt) {
-                const first = sequence.statement
-                if (first instanceof DefExpStmtN || first instanceof DefExpStmtS) {
-                    return first
-                }
-            }
-
-            // If the name was declared, we shouln't get here
-            throw new Utility.RunTimeError(ErrorCode.BugCheck)
+            return this.udf[name]
         }
 
         // We don;t know about this function
@@ -392,26 +382,15 @@ class Program {
      */
     public findFnend(defStmt: number) : number {
 
-        // Iterate over the expanded statement in line number order
-        const defIndex = defStmt
-        for (let nextIndex = this.nextStatementIndex(defIndex); nextIndex != 0; nextIndex = this.nextStatementIndex(nextIndex)) {
-
-            let statement: Statement = this.contents[nextIndex]
-
-            // Deal with statement sequences by inspecting only the first
-            if (statement instanceof SequenceStmt) {
-                statement = statement.statement
-            }
-
-            // If this is a NEXT statement specifying the same variable,
-            // we have found the answer
+        // Inspect each subsequent line in order
+        this.contents.slice(defStmt).forEach((statement, line) => {
             if (statement instanceof FnendStmt) {
-                return nextIndex
+                return line
             }
-            else if (statement instanceof DefStmt || statement instanceof EndStmt) {
+            else if (statement instanceof DefStmt) {
                 throw new Utility.RunTimeError(ErrorCode.DefInDef)
             }
-        }
+        })
 
         // We didn't find an FNEND after this DEF
         throw new Utility.RunTimeError(ErrorCode.DefNoFnend)
@@ -622,6 +601,6 @@ class Program {
 
         // Resolve any unknown locations in the object code
         this.vm.prepare(this)
-        //this.vm.dump()
+        this.vm.dump()
     }
 }

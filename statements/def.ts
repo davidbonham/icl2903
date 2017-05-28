@@ -67,8 +67,23 @@ class VariableList {
         return sawComma ? null : new VariableList(result)
     }
 
+    public signature() : string {
+        return this.variables.map(v => v instanceof NScalarRef ? "N" : "S").join()
+    }
+
     public source() : string {
         return this.variables.map(v => v.source()).join(",")
+    }
+
+    public bind(args: (number|string)[], context: StateContext) {
+        for (let i = 0; i < args.length; ++i) {
+            if (this.variables[i] instanceof NScalarRef) {
+                context.setScalar(this.variables[i].source(), <number>args[i])
+            }
+            else {
+                context.set$(this.variables[i].source(), <string>args[i])
+            }
+        }
     }
 }
 
@@ -78,8 +93,19 @@ class VariableList {
  */
 abstract class DefStmt extends Statement {
 
+    // Line number of the start of the definition
+    protected line: number
+    // Line number of the FNEND
+    protected fnend: number
+
+    public signature() : string {
+        return this.parameters.signature()
+    }
+
     protected constructor(protected readonly name: string, protected readonly parameters: VariableList) {
         super()
+        this.line = 0
+        this.fnend = 0
     }
 
     public static parse(scanner: Scanner) : DefStmt {
@@ -145,124 +171,70 @@ abstract class DefStmt extends Statement {
 
     }
 
+    public compileEntry (vm: Vm) {
+
+        // We need to leave space for a branch around this function definition
+        // in case execution of the main program reaches this point
+        vm.emit([Op.DEF, Op.NOP])
+    }
+
     public prepare(context: Context, line: number) {
-        context.root().program.declareUdf(this.name, line)
+        context.root().program.declareUdf(this.name, line, this)
     }
 
-    public execute(context: Context) : boolean {
-        return false
-    }
-
-    /**
-     * To evaluate the body of a function definition, we need to define
-     * a local context containing the arguments to the function and any
-     * local variables it declares so that references to them don't get
-     * looked up in the caller's context. The argument list is a sequence
-     * of expressions that must be evaluated in the caller's context and
-     * then bound to scalar variables in the local context with the matching
-     * argument names. Local variables must be set up to be undefined.
-     *
-     * @param context   the caller's context
-     * @param args      the arguments to the function, as expression trees
-     */
-    protected setupContext(context: Context, args: (StringExpression|NumericExpression)[]) : Context {
-
-        // We need to check that the right number of arguments have been
-        // provided  and that the types match because the parser could
-        // not do that.
-        if (this.parameters.variables.length != args.length) throw new Utility.RunTimeError(ErrorCode.WrongNumber)
-
-        // Create a new child context in which we will bind our parameters to the
-        // values of the argument expression.
-        context.pushUDF(12345)
-
-        for (let i = 0; i < args.length; ++i) {
-            const argument = args[i]
-            if (argument instanceof NumericExpression) {
-                const parameter = this.parameters.variables[i]
-                if (parameter instanceof NScalarRef) {
-                    parameter.set(context, argument.value(context))
-                }
-                else {
-                    throw new Utility.RunTimeError(ErrorCode.InvArg)
-                }
-            }
-            else if (argument instanceof StringExpression) {
-                const parameter = this.parameters.variables[i]
-                if (parameter instanceof SScalarRef) {
-                    parameter.set$(context, argument.value(context))
-                }
-                else {
-                    throw new Utility.RunTimeError(ErrorCode.InvArg)
-                }
-            }
-        }
-
-        return context
+    public bind(args: (number|string)[], context: StateContext) : void {
+        this.parameters.bind(args, context)
     }
 }
 
-class DefExpStmtN extends DefStmt {
+abstract class DefExpStmt extends DefStmt {
 
-    public constructor(name: string,
-                       parameters: VariableList,
-                       protected readonly expression: NumericExpression) {
+    public constructor(name: string, parameters: VariableList, protected readonly expression: Expression) {
         super(name, parameters)
     }
 
     public source() : string {
         return "DEF " + this.name + "(" + this.parameters.source() + ")=" + this.expression.source()
-    }
-
-    public call(context: Context, args: (StringExpression|NumericExpression)[]): number {
-        // Create a new child context in which we will bind our parameters to the
-        // values of the argument expression.
-        const child = this.setupContext(context, args)
-
-        // Now we evaluate our function expression in that context to get
-        // our result
-        return this.expression.value(child)
     }
 
     public compile(vm: Vm) {
-        Utility.bugcheck("unimplemented")
+
+        this.compileEntry(vm)
+
+         // Compile the code to evaluate the expression assuming that a context
+        // has been set up containing the arguments. Leave the result on the
+        // stack
+        this.expression.compile(vm)
+        vm.emit1(Op.UFE)
     }
 }
 
-class DefExpStmtS extends DefStmt {
+class DefExpStmtN extends DefExpStmt {
 
-    public constructor(name: string,
-                       parameters: VariableList,
-                       protected readonly expression: StringExpression) {
-        super(name, parameters)
+    public constructor(name: string, parameters: VariableList, protected readonly expression: NumericExpression) {
+        super(name, parameters, expression)
     }
+}
 
+class DefExpStmtS extends DefExpStmt {
 
-    public source() : string {
-        return "DEF " + this.name + "(" + this.parameters.source() + ")=" + this.expression.source()
+    public constructor(name: string, parameters: VariableList, protected readonly expression: StringExpression) {
+        super(name, parameters, expression)
     }
 
     public call(context: Context, args: (StringExpression|NumericExpression)[]): string {
         // Create a new child context in which we will bind our parameters to the
         // values of the argument expression.
-        const child = this.setupContext(context, args)
 
         // Now we evaluate our function expression in that context to get
         // our result
-        return this.expression.value(child)
+        return ""
     }
-
-    public compile(vm: Vm) {
-        Utility.bugcheck("unimplemented")
-    }
-
 }
 
-class DefBlockStmtN extends DefStmt {
+abstract class DefBlockStmt extends DefStmt {
 
-    protected line: number
-
-    public constructor(name: string,
+    protected constructor(name: string,
                        parameters: VariableList,
                        protected readonly locals: VariableList) {
         super(name, parameters)
@@ -273,86 +245,33 @@ class DefBlockStmtN extends DefStmt {
     }
 
     public prepare(context: Context, line: number) {
-
-        // Check that there is no DEF or END before the next FNEND and that
-        // there is an FNEND.
-        this.line = context.root().program.findFnend(line)
-        context.root().program.declareUdf(this.name, line)
-    }
-
-    public call(context: Context, args: (StringExpression|NumericExpression)[]): number {
-        // Create a new child context in which we will bind our parameters to the
-        // values of the argument expression.
-        const child = this.setupContext(context, args)
-
-        // The legal limits of the statements we can execute as part of
-        // the function definition block
-        const firstIndex = this.line
-        const fnendIndex = child.root().program.findFnend(this.line)
-
-        // Start at the first statement following the DEF and continue
-        // executing them until we hit the FNEND or attempt to leave the
-        // block.
-        child.nextStmtIndex = firstIndex
-        while (child.nextStmtIndex != fnendIndex) {
-
-            if (firstIndex <= child.nextStmtIndex && child.nextStmtIndex < fnendIndex) {
-                child.root().program.step(child, "")
-            }
-            else {
-                throw new Utility.RunTimeError(ErrorCode.InvExit)
-            }
-        }
-
-        // We're at the end of the function definition block. Our child
-        // context's control stack should be empty with no active FOR or
-        // GOSUBs.
-        if (child instanceof GosubReturnContext || child instanceof ForNextContext) {
-            throw new Utility.RunTimeError(ErrorCode.InvExit)
-        }
-
-        // All is well so our result is the current value of our name in
-        // the child context
-        return child.state().getNumber(this.name)
+        context.root().program.declareUdf(this.name, line, this)
     }
 
     public compile(vm: Vm) {
-        Utility.bugcheck("unimplemented")
+        this.compileEntry(vm)
+    }
+ }
+
+class DefBlockStmtN extends DefBlockStmt {
+
+    public constructor(name: string, parameters: VariableList, locals: VariableList) {
+        super(name, parameters, locals)
     }
 
+    public call(context: Context, args: (StringExpression|NumericExpression)[]): number {
+        return 1
+    }
 }
 
-class DefBlockStmtS extends DefStmt {
+class DefBlockStmtS extends DefBlockStmt {
 
-    public constructor(name: string,
-                       parameters: VariableList,
-                       protected readonly locals: VariableList) {
-        super(name, parameters)
-    }
-
-    public source() : string {
-        return "DEF " + this.name + "(" + this.parameters.source() + ")" + this.locals.source()
+    public constructor(name: string, parameters: VariableList, locals: VariableList) {
+        super(name, parameters, locals)
     }
 
     public call(context: Context, args: (StringExpression|NumericExpression)[]): string {
-        // Create a new child context in which we will bind our parameters to the
-        // values of the argument expression.
-        const child = this.setupContext(context, args)
         return ""
     }
 
-    public compile(vm: Vm) {
-        Utility.bugcheck("unimplemented")
-    }
-
 }
-
-
-/*    lazy val stmt_fnend: PackratParser[Statement] = "FNEND" ^^^ Fnend()
-
-    lazy val stmt_fnletn: PackratParser[Statement] =
-      nudf ~ "=" ~ nexpr ^^ { case id ~ _ ~ rv => FnLetN(id, rv)}
-
-    lazy val stmt_fnlets: PackratParser[Statement] =
-      sudf ~ "=" ~ sexpr ^^ { case id ~ _ ~ rv => FnLetS(id, rv)}
-*/

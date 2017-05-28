@@ -49,12 +49,15 @@ enum Op {
     TTN,        // N            =>              Format the number and print it
     TTS,        // S            =>              Format the string and print it
     TTT,        // N            =>              Tab to tab position
+    UFE,        // V            => V            Exit from a UDF
+    UV,          //              => V            Push the result of this UDF
 
     // One Operand
     AN = 0x100, // C R          => N,           value of numeric array element
     AS,         // C R          => S            value of string array element
     CVS,        //              => S            build string from vector and push
     CSV,        // S            =>              place string in vector
+    DEF,        //                              entry point to a UDF
     ERR,        //                              throw the error
     FOR,        // V V V        =>              push a FOR onto the control stack
     JF,         // L            =>
@@ -84,6 +87,10 @@ enum Op {
     SVS,        // S C          => S            set string vector element
     SAS,        // S C R        => S            set string array element
     SS,         //              => S            value of string scalar
+    UNC,        // V1..VN N     => N            call a user defined numeric function
+    UNS,        // N            =>              set result of user defined numeric function
+    USC,        // V1..VN N     => S            call a user defined string function
+    USS,        // S            =>              set result of user defined string function
     VS,         // C            => S            value of string vector element
 }
 
@@ -199,7 +206,13 @@ class Vm {
     // The number of operations to perform before returning to the caller
     protected count: number
 
+    // The object code
     protected code: Code[]
+
+    // The zones into which the program is divided by function definition
+    // blocks - the index is the pc of the DEF, the value the index of the
+    // FNEND
+    protected zone: number[]
 
     protected valueStack: Value[]
 
@@ -214,6 +227,7 @@ class Vm {
         Vm.opmap[Op.CHN]    = Vm.CHN
         Vm.opmap[Op.CSV]    = Vm.CSV
         Vm.opmap[Op.CVS]    = Vm.CVS
+        Vm.opmap[Op.DEF]    = Vm.DEF
         Vm.opmap[Op.DIV]    = Vm.DIV
         Vm.opmap[Op.DROP]   = Vm.DROP
         Vm.opmap[Op.EIS]    = Vm.EIS
@@ -284,6 +298,12 @@ class Vm {
         Vm.opmap[Op.TTN]    = Vm.TTN
         Vm.opmap[Op.TTS]    = Vm.TTS
         Vm.opmap[Op.TTT]    = Vm.TTT
+        Vm.opmap[Op.UFE]    = Vm.UFE
+        Vm.opmap[Op.UNC]    = Vm.UNC
+        Vm.opmap[Op.UNS]    = Vm.UNS
+        Vm.opmap[Op.USC]    = Vm.USC
+        Vm.opmap[Op.USS]    = Vm.USS
+        Vm.opmap[Op.UV]     = Vm.UV
         Vm.opmap[Op.VN]     = Vm.VN
     }
 
@@ -335,6 +355,10 @@ class Vm {
             }
         })
 
+        // Display the zones we have detected
+        wto("== Zones ========================")
+        this.zone.forEach((value, index) => wto("zone " + index + ".." + value))
+
         // Display the final operaton
         wto(line)
         wto("PC=" + this.pc)
@@ -346,6 +370,7 @@ class Vm {
     }
     public clear() : void {
         this.code = []
+        this.zone = []
         this.valueStack = []
         this.inputBuffer = new InputBuffer
     }
@@ -387,6 +412,17 @@ class Vm {
 
     public goto(pc: number) {
         this.pc = pc
+    }
+
+    protected legal(from: number, to: number) : boolean {
+        // They must belong to the same zone
+        let fromZone: number = null
+        let toZone: number = null
+        this.zone.forEach((fnend, def) => {
+            if (def <= from && from <= fnend) fromZone = from
+            if (def <= to   && to   <= fnend) toZone = to
+        })
+        return fromZone === toZone
     }
 
     protected push(value: Code) {
@@ -514,6 +550,7 @@ class Vm {
         vm.push(NArrayRef.AN(context, id, col, row))
 
     }
+
     protected static AND(vm: Vm, context: Context) : void {
         vm.logicalOp((lhs: boolean, rhs: boolean) => lhs && rhs)
     }
@@ -609,6 +646,10 @@ class Vm {
         vm.push(result)
     }
 
+    protected static DEF(vm: Vm, context: Context) : void {
+        // prepare should have patched this to a jump
+        throw new Utility.RunTimeError(ErrorCode.BugCheck)
+    }
 
     protected static DIV(vm: Vm, context: Context) : void {
         vm.binaryOpNN((lhs, rhs) => lhs / rhs)
@@ -675,11 +716,12 @@ class Vm {
     protected static GO(vm: Vm, context: Context) : void {
         const line = vm.popNumber()
         if (line != -1) {
+            const pc = vm.pcForLine(context, line)
             // Make sure we aren't branching out of a user-defined function
-            if (!context.state().inBounds(line)) {
+            if (!vm.legal(vm.pc, pc)) {
                 throw new Utility.RunTimeError(ErrorCode.InvExit)
             }
-            vm.pc = vm.pcForLine(context, line)
+            vm.goto(pc)
         }
     }
 
@@ -1110,6 +1152,70 @@ class Vm {
         PrintStmt.TTT(context, vm.popNumber())
     }
 
+    protected static UNC(vm: Vm, context: Context) : void {
+        const name = vm.argS()
+        vm.callUserFunction(name, context)
+    }
+
+    protected static UNS(vm: Vm, context: Context) : void {
+        // The top of the stack should contain the result of the
+        // expression. Check types and store the result in the context
+        const name = vm.argS()
+        const current = context.state()
+        if (current instanceof UDFContext && current.name == name) {
+            current.setScalar(name, vm.popNumber())
+        }
+        else {
+            // Can't assign the result of a UDF outside of its definition
+            throw new Utility.RunTimeError(ErrorCode.DefInDef)
+        }
+    }
+
+    protected static USC(vm: Vm, context: Context) : void {
+        const name = vm.argS()
+        vm.callUserFunction(name, context)
+    }
+
+    protected static UFE(vm: Vm, context: Context) : void {
+        // The top of the stack should contain the result of the
+        // function call. Leave it there and pop the UDF context.
+        vm.goto(context.popUDF())
+    }
+
+    protected static USS(vm: Vm, context: Context) : void {
+        // The top of the stack should contain the result of the
+        // expression. Check types and store the result in the context
+        const name = vm.argS()
+        const current = context.state()
+        if (current instanceof UDFContext && current.name == name) {
+            current.set$(name, vm.popString())
+        }
+        else {
+            // Can't assign the result of a UDF outside of its definition
+            throw new Utility.RunTimeError(ErrorCode.DefInDef)
+        }
+    }
+
+    protected static UV(vm: Vm, context: Context) : void {
+        // We should be in a UDF. Get the current value of it and push
+        // it onto the stack
+        const ctx = context.state()
+        if (ctx instanceof UDFContext) {
+            if (ctx.name.endsWith("$")) {
+                vm.push(ctx.getString(ctx.name))
+            }
+            else {
+                vm.push(ctx.getNumber(ctx.name))
+            }
+        }
+        else {
+            throw new Utility.RunTimeError(ErrorCode.FnendNotinUdf)
+        }
+    }
+
+
+
+
     protected static VN(vm: Vm, context: Context) : void {
         const id = vm.argS()
         const col = vm.popNumber()
@@ -1152,6 +1258,60 @@ class Vm {
         throw new Utility.RunTimeError(ErrorCode.ForUnmatched, line)
     }
 
+    protected prepareDEF() : void {
+
+        // We have two tasks here - for each DEF we must replace it with
+        // a jump around the code and we must also build up a map of the
+        // main program and function blocks so we can control legal GOTOs.
+        this.zone = []
+
+        let defPc : number = null
+        this.code.forEach((op, pc) =>{
+            if (op == Op.DEF) {
+                wto("DEF pc=" + pc + " pc was " + defPc)
+                // We should not be in a DEF when we encounter this
+                if (defPc !== null) {
+                    throw new Utility.RunTimeError(ErrorCode.DefInDef)
+                }
+                // Note the location for later patching
+                defPc = pc
+            }
+            else if (defPc === null && (op == Op.USS || op == Op.UNS || op == Op.UV || op == Op.UFE)) {
+                // Use of UDF name outside of definition
+                wto("found op " + Op[op] + " at pc=" + pc + " not in DEF")
+                throw new Utility.RunTimeError(ErrorCode.NoUDF)
+            }
+            else if (defPc !== null && op == Op.END) {
+                wto("found op " + Op[op] + " at pc=" + pc + " not in DEF")
+                throw new Utility.RunTimeError(ErrorCode.DefInDef)
+            }
+            else if (op == Op.UFE) {
+                wto("UFE at pc=" + pc + " for DEF at " + defPc)
+                // This is the end of the current DEF block.
+                // Transform
+                //
+                // DEF xx ...... UFE past:
+                //
+                // into
+                //
+                // JMP past BND past-1
+                //
+                this.code[defPc] = Op.NOP
+                this.patch(defPc, [Op.JMP, pc+1])
+
+                // That ends this DEF. Update our map and then drop it
+                this.zone[defPc] = pc
+                defPc = null
+            }
+        })
+
+        // Should not reach the end of the program in a def
+        if (defPc !== null) {
+            wto("defPc=" + defPc + " at end")
+            throw new Utility.RunTimeError(ErrorCode.DefNoFnend)
+        }
+    }
+
     public prepare(program: Program) {
 
         // We'll keep track of all the NEXT statements that we manage to
@@ -1172,5 +1332,48 @@ class Vm {
             }
         })
 
+        // Now check the DEF functions
+        this.prepareDEF()
+
+    }
+
+    public callUserFunction(name: string, context: Context) {
+
+        // At this point, the stack contains the number of arguments and
+        // the arguments themselves. Build a context that binds the stacked
+        // arguments to the parameter names. Record the pc to which we
+        // return
+
+        context.pushUDF(name, this.pc)
+
+        // Retrieve the arguments into an array
+        const argCount = this.popNumber()
+        let args : (number|string)[] = []
+        for (let i = argCount-1; i >= 0; --i) {
+            let arg = this.pop()
+            if (typeof(arg) == "number" || typeof(arg) == "string") {
+                args[i] = arg
+            }
+            else {
+                throw new Utility.RunTimeError(ErrorCode.BugCheck)
+            }
+        }
+
+        // Work out the call signature
+        const signature = args.map(value => typeof(value) == "number" ? "N" : "S").join()
+
+        // Retrieve the definition of the function and check the signature
+        const udf = context.root().program.getUdf(name)
+        if (udf.definition.signature() != signature) {
+            throw new Utility.RunTimeError(ErrorCode.InvArg)
+        }
+
+        // Bind the arguments to the parameter names now we know everything
+        // matches
+        const parameterNames = udf.definition.bind(args, context.state())
+
+        // Transfer control to the function, remembering to skip past the
+        // JMP at the start of the definition
+        this.goto(context.root().program.pcForLine(udf.line)+2)
     }
 }
