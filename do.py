@@ -57,7 +57,8 @@ def order_js(sources):
                         break
 
                 print 'File', source, 'comes after', base_file, 'because', derived, 'extends', base
-                depends_on[source].append(base_file)
+                if base_file not in depends_on[source]:
+                    depends_on[source].append(base_file)
 
 
     # Now define the order of output by taking the depends_on dictionary
