@@ -262,8 +262,6 @@ class Program {
             // Complete the last entry - there is no following statement
             this.nextLineMap[previousLineNumber] = 0
             this.staleLineMap = false
-
-            this.nextLineMap.forEach((value, index) => console.log("nextLineMap[" + index + "]=" + value))
         }
 
         // Get the next line number and convert it into its index
@@ -321,79 +319,6 @@ class Program {
                 }
             }
         })
-    }
-
-    /**
-     * Find the NEXT statement matching this FOR.
-     *
-     * Advance from the current statement (which is expected to be a FOR)
-     * until we find a NEXT (which ought to match it). We return the statement
-     * number so that the caller can transfer control to it. When it is
-     * executed, we will discover if there is a problem
-     *
-     * We need to deal in statement indices rather than line numbers so
-     * that the following will work:
-     *
-     * 10 FOR I=1 TO 10!PRINT I!NEXT I
-     *
-     * @param forStmt index of the for statement in our contents
-     * @param index   the refernce to the loop index variable
-     */
-    public findNext(forStmt: number, index: NScalarRef) : number {
-
-        // Iterate over the expanded statement in line number order
-        let nextIndex = forStmt
-        for (let nextIndex = forStmt; nextIndex != 0; nextIndex = this.nextStatementIndex(nextIndex)) {
-
-            let statement: Statement = this.contents[nextIndex]
-
-            // Deal with statement sequences by inspecting only the first
-            if (statement instanceof SequenceStmt) {
-                statement = statement.statement
-            }
-
-            // If this is a NEXT statement specifying the same variable,
-            // we have found the answer
-            if (statement instanceof NextStmt) {
-                if (statement.index.same(index)) {
-                    return nextIndex
-                }
-            }
-        }
-
-        // We didn't find a next after this for
-        throw new Utility.RunTimeError(ErrorCode.ForUnmatched)
-    }
-
-    /**
-     * Find the FNEND statement matching this DEF.
-     *
-     * Advance from the current statement (which is expected to be a DEF)
-     * until we find an FNEND. We return the statement number. We also
-     * check that none of the intervening statements is another DEF or an
-     * END statement.
-     *
-     * We need to deal in statement indices rather than line numbers so
-     * that the following will work:
-     *
-     * 10 DEF FNA(X)!FNA=4!FNEND
-     *
-     * @param defStmt: line number of the def statement
-     */
-    public findFnend(defStmt: number) : number {
-
-        // Inspect each subsequent line in order
-        this.contents.slice(defStmt).forEach((statement, line) => {
-            if (statement instanceof FnendStmt) {
-                return line
-            }
-            else if (statement instanceof DefStmt) {
-                throw new Utility.RunTimeError(ErrorCode.DefInDef)
-            }
-        })
-
-        // We didn't find an FNEND after this DEF
-        throw new Utility.RunTimeError(ErrorCode.DefNoFnend)
     }
 
     public lineForPc(wanted: number) : number {
@@ -596,11 +521,10 @@ class Program {
             // Record the location of this line in the map
             this.vmmap[index] = this.vm.mark(0)
             statement.compile(this.vm)
-            //wto("vm " + this.vmmap[index] + ": " + index + " " + statement.source())
         })
 
         // Resolve any unknown locations in the object code
         this.vm.prepare(this)
-        this.vm.dump()
+        //this.vm.dump()
     }
 }
