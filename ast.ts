@@ -67,9 +67,7 @@ abstract class Command extends ASTNode {
 abstract class Statement extends ASTNode {
 
     public abstract source() : string
-    public  compile(vm : Vm) : void {
-        Utility.bugcheck("not implemented");
-    }
+    public abstract compile(vm : Vm) : void
 
     public isImmediateStatement() : boolean {
         return true;
@@ -169,9 +167,7 @@ abstract class Expression extends ASTNode {
         return expressions
     }
 
-    public compile(vm: Vm) {
-        Utility.bugcheck("not implemented");
-    }
+    public abstract compile(vm: Vm) : void
 }
 
 
