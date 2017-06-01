@@ -48,6 +48,10 @@ class DataStmt extends Statement
         return "DATA " + this.data.map(datum => datum.source()).join(",")
     }
 
+    public compile() {
+        // Handled in prepare
+    }
+
     public prepare(context: Context, line: number) : void {
         this.data.forEach ((datum) => context.root().data.add(line, datum))
     }
