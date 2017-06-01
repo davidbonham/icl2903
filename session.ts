@@ -6,7 +6,7 @@
 
 namespace Session {
 
-    const TICKS_PER_YIELD = 10000
+    const TICKS_PER_YIELD = 1000
     let ticks = 0
 
     /**
