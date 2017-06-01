@@ -739,6 +739,11 @@ class SVectorRef extends SRef {
         context.state().dimVector$(this.name, this.col.value(context))
     }
 
+   public compile(vm: Vm) {
+        this.col.compile(vm)
+        vm.emit([Op.VS, this.name])
+    }
+
     public compileAssign(vm: Vm) {
         // The value to be assigned is on the top of the stack so we need
         // to generate code to evaluate the vector index and then assign
@@ -784,13 +789,20 @@ class SArrayRef extends SRef {
         context.state().dimArray$(this.name, this.col.value(context), this.row.value(context));
     }
 
+    public compile(vm: Vm) {
+        this.col.compile(vm)
+        this.row.compile(vm)
+        vm.emit([Op.AS, this.name])
+    }
+
+
     public compileAssign(vm: Vm) {
         // The value to be assigned is on the top of the stack so we need
         // to generate code to evaluate the array indices and then assign
         // the value to the array element
         this.col.compile(vm)
         this.row.compile(vm)
-        vm.emit([Op.SAN, this.name])
+        vm.emit([Op.SAS, this.name])
     }
 
     public static AS(context: Context, id: string, col: number, row: number) : string {
