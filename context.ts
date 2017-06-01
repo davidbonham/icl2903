@@ -14,7 +14,6 @@ class Context {
     }
 
     public clear() {
-        wto("context clear")
         // Return to the very top of the context chain
         this.current = this.root()
 
@@ -27,24 +26,61 @@ class Context {
 
     protected pop()  {
         this.current = this.stack.pop()
-        this.dump("after context pop")
     }
 
     public pushRoot(session: Session.Session, program: Program) {
         this.current = new RootContext(session, program)
-        this.dump("after pushRoot")
     }
 
     public pushGosubReturn(pc: number) {
         this.stack.push(this.current)
         this.current = new GosubReturnContext(this.current, pc)
-        this.dump("after pushGosubReturn")
+    }
+
+    protected unwindAnyActiveFor(index: NScalarRef, location: number) {
+
+        // Find the state context (either the root or an active DEF) that
+        // owns the loop control variable.
+        const owner = this.current.state.ownerOfNScalar(index.source())
+
+        // The highest context is the root context so ignore it
+        for (let depth = this.stack.length-1; depth >= 1; --depth) {
+
+            const ctx = this.stack[depth]
+            if (ctx instanceof StateContext && ctx === owner) {
+                // This context owns the loop control variable and so no
+                // higher FOR context can reference it. This means this
+                // FOR loop is not active and we're done.
+                break
+            }
+            else if (ctx instanceof ForNextContext && ctx.pc == location) {
+
+                // This is a matching FOR loop. There is no intervening
+                // context defining the loop control variable so the new
+                // loop is already active and we must unwind the stack up
+                // to and including this one.
+                wto("active FOR at depth=" + depth + " so unwinding that")
+                this.stack.splice(depth)
+
+                // Now we are ready to create the new FOR context in the
+                // current one.
+                break
+            }
+        }
+        // No active FOR loop - all is fine
     }
 
     public pushForNext(index: NScalarRef, limit: number, step: number, top: number) {
+
+        // Because we allow FOR loops to be terminated by branching out
+        // early, we need to check that this for loop is not already
+        // active. If it is, we need to unwind state up to and including
+        // that context, potentially destroying in-progress DEF functiions
+        // nested FORs and GOSUBs.
         this.stack.push(this.current)
-        this.current = new ForNextContext(this.current, index, limit, step, top)
-        this.dump("after pushForNext")
+        this.unwindAnyActiveFor(index, top)
+        // Now we have unwound any active FOR
+        this.current = new ForNextContext(this.stack[this.stack.length-1], index, limit, step, top)
     }
 
     public pushUDF(name: string, pc: number) {
@@ -99,11 +135,9 @@ class Context {
 
                     // Get the next value of the loop control variable
                     const next = index.value(this) + top.step
-
                     // If it has passed the limit, we end the loop
                     if ((top.step < 0.0 && next < top.to) || (top.step > 0.0 && next > top.to)) {
                         this.pop()
-                        this.dump("after popForNext matched, end loop")
                         return null
                     }
                     else {
@@ -117,7 +151,6 @@ class Context {
                     // Not the matching FOR loop so we stop running it
                     // and look for the enclosing one
                     this.pop()
-                    this.dump("after popForNext unmatched")
                 }
             }
         }
@@ -137,7 +170,6 @@ class Context {
         // find a RETURN element (or run out)
         let pc = 0
         while (pc == 0) {
-            this.dump("popGosubReturn in loop")
 
             let frame = this.current
             if (frame instanceof GosubReturnContext) {
@@ -162,7 +194,6 @@ class Context {
             }
             this.pop()
         }
-        this.dump("popGosubReturn exit")
 
         return pc
 
@@ -233,9 +264,10 @@ class Context {
     }
 
     public dump(title: string) {
-        wto("Context Stack: " + title)
+        wto("== Context Stack: " + title)
         this.stack.forEach(context => context.dump())
         this.current.dump()
+        wto("== End Context Stack")
     }
 }
 abstract class BaseContext {
@@ -293,7 +325,7 @@ class StateContext extends BaseContext {
     // Scalar Management
     // ---------------------------------------------------------------------
 
-    protected ownerOfNScalar(name: string) : StateContext {
+    public ownerOfNScalar(name: string) : StateContext {
 
         if (name in this.nscalar) {
             // We have the state for this scalar

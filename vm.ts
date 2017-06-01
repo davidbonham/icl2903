@@ -305,6 +305,7 @@ class Vm {
         Vm.opmap[Op.USS]    = Vm.USS
         Vm.opmap[Op.UV]     = Vm.UV
         Vm.opmap[Op.VN]     = Vm.VN
+        Vm.opmap[Op.VS]     = Vm.VS
     }
 
     protected bug(reason: string) {
@@ -314,11 +315,29 @@ class Vm {
         throw new Utility.RunTimeError(ErrorCode.BugCheck)
     }
 
+    protected operand(value: Code) : string {
+        // This is an operand to the last operation
+        if (typeof(value) == "string") {
+            return "\"" + value + "\" "
+        }
+        else if (typeof(value) == "number") {
+            return value.toString() + " "
+        }
+        else if (typeof(value) == "function") {
+            return value.name
+        }
+        else if (value instanceof NScalarRef) {
+            return value.source() + " "
+        }
+
+        return value.toString() + " [" + typeof(value) + "] "
+    }
+
     public dump() {
         wto("== Object Code ==================")
         let args = 0
         let line = ""
-        this.code.forEach((value, index) => {
+        this.code.forEach((value: Code, index) => {
             if (args == 0) {
                 if (typeof(value) == "number") {
                     // Back at the start of an operation. Display the last line
@@ -335,22 +354,7 @@ class Vm {
                 }
             }
             else {
-                // This is an operand to the last operation
-                if (typeof(value) == "string") {
-                    line += "\"" + value + "\" "
-                }
-                else if (typeof(value) == "number") {
-                    line += value.toString() + " "
-                }
-                else if (typeof(value) == "function") {
-                    line += value.name
-                }
-                else if (value instanceof NScalarRef) {
-                    line += value.source() + " "
-                }
-                else {
-                    line += value.toString() + " [" + typeof(value) + "] "
-                }
+                line += this.operand(value)
                 args--
             }
         })
@@ -368,6 +372,23 @@ class Vm {
         })
         wto("=================================")
     }
+
+    public trace() : void {
+        let stack = ""
+        const depth = this.valueStack.length > 3 ? 3 : this.valueStack.length
+        for (let i = this.valueStack.length-1;  i >= this.valueStack.length-depth; --i) {
+            stack += '<' + this.valueStack[i] + '> '
+        }
+        const opcode = this.code[this.pc]
+        let operation = Op[opcode]
+        if (opcode >> 8) {
+            operation += " " + this.operand(this.code[this.pc+1])
+        }
+
+        let line = Utility.padInteger(this.pc, 4, '0') + ': ' + operation + " | " + stack
+        wto(line)
+    }
+
     public clear() : void {
         this.code = []
         this.zone = []
@@ -1213,13 +1234,16 @@ class Vm {
         }
     }
 
-
-
-
     protected static VN(vm: Vm, context: Context) : void {
         const id = vm.argS()
         const col = vm.popNumber()
         vm.push(NVectorRef.VN(context, id, col))
+    }
+
+    protected static VS(vm: Vm, context: Context) : void {
+        const id = vm.argS()
+        const col = vm.popNumber()
+        vm.push(SVectorRef.VS(context, id, col))
     }
 
     public step(count: number, context: Context) {
@@ -1227,6 +1251,7 @@ class Vm {
 
         while (this.count-- > 0) {
             //this.dump()
+            //this.trace()
             const op = this.code[this.pc++]
             if (typeof(op) == "number" && Vm.opmap[op]) {
                 Vm.opmap[op](this, context)
@@ -1266,7 +1291,8 @@ class Vm {
         this.zone = []
 
         let defPc : number = null
-        this.code.forEach((op, pc) =>{
+        for (let pc = 0; pc < this.code.length; ++pc) {
+            const op = this.code[pc]
             if (op == Op.DEF) {
                 wto("DEF pc=" + pc + " pc was " + defPc)
                 // We should not be in a DEF when we encounter this
@@ -1303,7 +1329,10 @@ class Vm {
                 this.zone[defPc] = pc
                 defPc = null
             }
-        })
+
+            // Step over any operands
+            pc += op >> 8
+        }
 
         // Should not reach the end of the program in a def
         if (defPc !== null) {
@@ -1313,16 +1342,23 @@ class Vm {
     }
 
     public prepare(program: Program) {
-
+        this.dump()
         // We'll keep track of all the NEXT statements that we manage to
         // match up with a for
         let matchedNXT : number[] = []
 
-        this.code.forEach((op, pc) =>{
-            if (op == Op.FOR) {
+        for (let pc = 0; pc < this.code.length; ++pc) {
+            if (this.code[pc] == Op.FOR) {
                 matchedNXT[this.prepareFOR(pc, program)] = 1
+
+                // Skip the nref, JMP and address
+                pc += 3
             }
-        })
+            else {
+                // Step over any operands
+                pc += this.code[pc] >> 8
+            }
+        }
 
         // Make sure every NXT was matched
         this.code.forEach((op, pc) =>{
@@ -1330,6 +1366,8 @@ class Vm {
                 const line = program.lineForPc(pc)
                 throw new Utility.RunTimeError(ErrorCode.NoFor, line)
             }
+            // Step over any operands
+            pc += this.code[pc] >> 8
         })
 
         // Now check the DEF functions
