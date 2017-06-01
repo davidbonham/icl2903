@@ -11,8 +11,7 @@ class TextLineStmt extends Statement {
         return this.data
     }
 
-    // We should never attempt to execute lines in a terminal format file
-    public execute(context: Context) : boolean {
+    public compile() {
         throw new Utility.RunTimeError(ErrorCode.BugCheck)
     }
 
