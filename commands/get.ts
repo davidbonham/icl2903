@@ -131,12 +131,12 @@ class GetCmd extends Command {
 
             if (contents.type == 'B') {
                 loader.loadBasic(contents.contents)
-                session.program.name = name
+                session.program.name = this.filename
                 session.program.isData = false;
             }
             else {
                 loader.loadTerminalFile(contents.contents)
-                session.program.name = name
+                session.program.name = this.filename
                 session.program.isData = true
             }
         }
