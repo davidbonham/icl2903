@@ -98,7 +98,10 @@ namespace Terminal
                 }
             }
             else if ("\b\r ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!\"$%^&*()-+=[];:@'#<>,.?/".indexOf(ch) != -1) {
-                // A character to be found on the teletype keyboard
+                // A character to be found on the teletype keyboard. We
+                // always print $ as £ on output and on input, map £ to
+                // $ so we process $ internally.
+                if (ch == "£") ch = '$'
                 this.terminal.addCharacter(ch, false);
             }
 
@@ -313,7 +316,11 @@ namespace Terminal
                 this.sounds.playSound(sample, i/10.0, false, () => {
 
                     let ch = text.charAt(printed);
-                    if (ch == '$') ch = 'l';
+
+                    // Map $ to £ on output to mimic UK print head. If a
+                    // £ is generated internally using chr$, render it
+                    // as a £ too by using the 'l' glyph.
+                    if (ch == '$' || ch == '£') ch = 'l';
 
                     this.tty.value += ch;
                     printed++;
