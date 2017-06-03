@@ -18,7 +18,7 @@ class Token
 
 class Scanner
 {
-    public static characterSet = "01234567890:;<=>? !\"#£%&'()*+,-./@ABCDEFGHIJKLMNOPQRSTUVWXYZ[$]^\n";
+    public static characterSet = "0123456789:;<=>? !\"#£%&'()*+,-./@ABCDEFGHIJKLMNOPQRSTUVWXYZ[$]^\n";
 
     private static COMMANDS : string[] = [
         // Commands
